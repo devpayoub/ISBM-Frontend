@@ -1,0 +1,62 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { dashboardApi } from '@/lib/api/dashboard';
+import { useAuthStore } from '@/lib/store/useAuthStore';
+import { AndonBoard } from '@/components/dashboard/AndonBoard';
+import { AlertFeed } from '@/components/dashboard/AlertFeed';
+import { AlertDeclareDialog } from '@/components/alerts/AlertDeclareDialog';
+import { connectWebSocket, disconnectWebSocket } from '@/lib/ws/client';
+
+export default function DashboardPage() {
+  const [kpis, setKpis] = useState<any>(null);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    dashboardApi.getKpis().then(setKpis).catch(console.error);
+    connectWebSocket();
+
+    return () => {
+      disconnectWebSocket();
+    };
+  }, [isAuthenticated]);
+
+  return (
+    <div className="p-6 flex flex-col h-full gap-6">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+        <h1 className="font-heading font-bold text-2xl uppercase tracking-wide text-text">Vue D'ensemble</h1>
+        <AlertDeclareDialog />
+      </div>
+      
+      {/* KPI Strip */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        {[
+          { label: 'TRS', value: kpis?.trs_global_pct, suffix: '%' },
+          { label: 'PRODUCTION', value: kpis?.production?.bottles, suffix: '' },
+          { label: 'ALERTES', value: kpis?.active_alerts, suffix: '', alert: kpis?.critical_active_alerts > 0 },
+          { label: 'COÛT/BTL', value: kpis?.cost_per_bottle, suffix: ' DT' },
+          { label: 'ÉNERGIE', value: kpis?.kwh_per_bottle, suffix: ' kWh/u' },
+        ].map(({ label, value, suffix, alert }) => (
+          <div key={label} className="bg-panel border border-border rounded-md p-4">
+            <div className="text-[11px] font-sans font-semibold tracking-widest text-text-dim uppercase">{label}</div>
+            <div className={`font-mono text-3xl font-bold mt-2 ${alert ? 'text-red-500' : ''}`}>
+              {value === undefined || value === null ? '--' : `${value}${suffix}`}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 min-h-0">
+        <div className="flex flex-col min-h-0">
+          <AndonBoard />
+        </div>
+        
+        <div className="flex flex-col min-h-0">
+          <AlertFeed />
+        </div>
+      </div>
+    </div>
+  );
+}
