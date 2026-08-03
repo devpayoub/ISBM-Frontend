@@ -2,13 +2,14 @@
 
 import { use, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import { machinesApi } from '@/lib/api/machines';
 import { alertsApi } from '@/lib/api/alerts';
-import { Machine, MachineStatus, Alert, PaginatedResponse } from '@/lib/api/types';
+import { Machine, Alert, PaginatedResponse } from '@/lib/api/types';
 import { useAlertStore } from '@/lib/store/useAlertStore';
 import { useAuthStore } from '@/lib/store/useAuthStore';
-
-const STATUSES: MachineStatus[] = ['RUNNING', 'STOPPED', 'MAINTENANCE', 'BREAKDOWN'];
+import { errorMessage } from '@/lib/api/errors';
+import { BackButton } from '@/components/ui/back-button';
 
 export default function MachineDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -46,17 +47,10 @@ export default function MachineDetailPage({ params }: { params: Promise<{ id: st
       const updated = await machinesApi.updateMachine(machine.id, editValues);
       setMachine(updated);
       setIsEditing(false);
+      toast.success('Machine mise à jour.');
     } catch (e) {
       console.error('Failed to update machine', e);
-    }
-  };
-
-  const handleStatusChange = async (status: MachineStatus) => {
-    try {
-      const updated = await machinesApi.updateStatus(machine.id, status);
-      setMachine(updated);
-    } catch (e) {
-      console.error('Failed to change status', e);
+      toast.error(errorMessage(e, 'Échec de la mise à jour de la machine.'));
     }
   };
 
@@ -65,11 +59,10 @@ export default function MachineDetailPage({ params }: { params: Promise<{ id: st
     try {
       await machinesApi.deleteMachine(machine.id);
       router.push('/machines');
-    } catch (e: any) {
+      toast.success('Machine supprimée.');
+    } catch (e) {
       console.error('Failed to delete machine', e);
-      let msg = 'Échec de la suppression.';
-      try { msg = JSON.parse(e.message).detail || msg; } catch {}
-      alert(msg);
+      toast.error(errorMessage(e, 'Échec de la suppression.'));
     }
   };
 
@@ -78,6 +71,7 @@ export default function MachineDetailPage({ params }: { params: Promise<{ id: st
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
+          <BackButton fallbackHref="/machines" />
           <div className={`w-6 h-6 rounded-full ${andonStyle}`} />
           <h1 className="font-heading font-bold text-2xl uppercase tracking-wide text-text">{machine.name}</h1>
           <span className="font-mono text-sm text-text-dim bg-bg px-3 py-1 rounded">{machine.code}</span>
@@ -155,14 +149,9 @@ export default function MachineDetailPage({ params }: { params: Promise<{ id: st
               ))}
               <div className="flex justify-between items-center py-1">
                 <span className="text-sm text-text-dim">Statut</span>
-                {canManage ? (
-                  <select value={machine.status} onChange={(e) => handleStatusChange(e.target.value as MachineStatus)}
-                    className="bg-bg border border-border rounded p-1 text-xs font-mono text-text focus:outline-none focus:border-cyan-500">
-                    {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                ) : (
-                  <span className="font-mono text-sm text-text">{machine.status}</span>
-                )}
+                <span className="font-mono text-sm text-text" title="Automatique — déterminé par les alertes actives sur cette machine.">
+                  {machine.status}
+                </span>
               </div>
             </div>
           )}

@@ -7,7 +7,11 @@ import Link from 'next/link';
 export function AlertFeed() {
   const liveAlerts = useAlertStore((state) => state.liveAlerts);
   const user = useAuthStore((state) => state.user);
-  
+  // Only ADMIN/MANAGER/CONTROLLER can open /alerts/[id] (see lib/auth/routes.ts)
+  // — for every other role this feed is read-only, so don't link to a page
+  // that'll just bounce them back here via AuthGuard.
+  const canOpenAlert = user?.role === 'ADMIN' || user?.role === 'MANAGER' || user?.role === 'CONTROLLER';
+
   const getSeverityBorder = (severity: string) => {
     switch (severity) {
       case 'CRITICAL': return 'border-l-red-500';
@@ -32,9 +36,9 @@ export function AlertFeed() {
             Aucune alerte en cours.
           </div>
         ) : (
-          liveAlerts.map(alert => (
-            <Link href={`/alerts/${alert.id}`} key={alert.id}>
-              <div className={`block p-3 bg-panel-2 rounded border border-border border-l-4 ${getSeverityBorder(alert.severity)} hover:bg-panel transition-colors mb-3`}>
+          liveAlerts.map(alert => {
+            const card = (
+              <div className={`block p-3 bg-panel-2 rounded border border-border border-l-4 ${getSeverityBorder(alert.severity)} ${canOpenAlert ? 'hover:bg-panel transition-colors' : ''} mb-3`}>
                 <div className="flex justify-between items-start mb-1">
                   <span className="font-mono text-xs text-text-dim">{alert.machine_name}</span>
                   <span className="font-mono text-[10px] bg-bg px-1.5 py-0.5 rounded text-text-dim">
@@ -48,8 +52,13 @@ export function AlertFeed() {
                   <span className="font-mono uppercase px-1.5 py-0.5 bg-bg rounded">{alert.status}</span>
                 </div>
               </div>
-            </Link>
-          ))
+            );
+            return canOpenAlert ? (
+              <Link href={`/alerts/${alert.id}`} key={alert.id}>{card}</Link>
+            ) : (
+              <div key={alert.id}>{card}</div>
+            );
+          })
         )}
       </div>
     </div>

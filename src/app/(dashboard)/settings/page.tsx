@@ -1,9 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { costsApi } from '@/lib/api/costs';
 import { alertsApi } from '@/lib/api/alerts';
 import { CostParameter, AlertCategory, AlertSeverity, PaginatedResponse } from '@/lib/api/types';
+import { errorMessage, parseFieldErrors } from '@/lib/api/errors';
+import { Input } from '@/components/ui/input';
 
 const SEVERITIES: AlertSeverity[] = ['CRITICAL', 'MAJOR', 'MINOR', 'INFO'];
 
@@ -19,6 +22,7 @@ export default function SettingsPage() {
   const [newParamLabel, setNewParamLabel] = useState('');
   const [newParamUnit, setNewParamUnit] = useState('');
   const [newParamValue, setNewParamValue] = useState('0');
+  const [paramErrors, setParamErrors] = useState<Record<string, string>>({});
 
   // Category create/edit form
   const [showCatForm, setShowCatForm] = useState(false);
@@ -28,6 +32,7 @@ export default function SettingsPage() {
   const [catSeverity, setCatSeverity] = useState<AlertSeverity>('MAJOR');
   const [catColor, setCatColor] = useState('#f59e0b');
   const [catRequiresMaintenance, setCatRequiresMaintenance] = useState(true);
+  const [catErrors, setCatErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     refreshParams();
@@ -45,8 +50,10 @@ export default function SettingsPage() {
     setSaving(true);
     try {
       await costsApi.updateParameters(costParams);
+      toast.success('Paramètres sauvegardés.');
     } catch (e) {
       console.error('Failed to save', e);
+      toast.error(errorMessage(e, 'Échec de la sauvegarde.'));
     } finally {
       setSaving(false);
     }
@@ -54,13 +61,17 @@ export default function SettingsPage() {
 
   const handleCreateParam = async (e: React.FormEvent) => {
     e.preventDefault();
+    setParamErrors({});
     try {
       await costsApi.createParameter({ name: newParamName, label: newParamLabel, unit: newParamUnit, value: parseFloat(newParamValue) || 0 });
       setNewParamName(''); setNewParamLabel(''); setNewParamUnit(''); setNewParamValue('0');
       setShowParamForm(false);
       await refreshParams();
+      toast.success('Paramètre créé.');
     } catch (e) {
       console.error('Failed to create parameter', e);
+      setParamErrors(parseFieldErrors(e));
+      toast.error(errorMessage(e, 'Échec de la création du paramètre.'));
     }
   };
 
@@ -69,8 +80,10 @@ export default function SettingsPage() {
     try {
       await costsApi.deleteParameter(param.id);
       await refreshParams();
+      toast.success('Paramètre supprimé.');
     } catch (e) {
       console.error('Failed to delete parameter', e);
+      toast.error(errorMessage(e, 'Échec de la suppression.'));
     }
   };
 
@@ -93,6 +106,7 @@ export default function SettingsPage() {
 
   const handleSaveCat = async (e: React.FormEvent) => {
     e.preventDefault();
+    setCatErrors({});
     const payload = { name: catName, code: catCode, severity_default: catSeverity, color: catColor, requires_maintenance: catRequiresMaintenance };
     try {
       if (editingCatId) {
@@ -103,8 +117,11 @@ export default function SettingsPage() {
       resetCatForm();
       setShowCatForm(false);
       await refreshCategories();
+      toast.success('Catégorie enregistrée.');
     } catch (e) {
       console.error('Failed to save category', e);
+      setCatErrors(parseFieldErrors(e));
+      toast.error(errorMessage(e, "Échec de l'enregistrement de la catégorie."));
     }
   };
 
@@ -113,11 +130,10 @@ export default function SettingsPage() {
     try {
       await alertsApi.deleteCategory(cat.id);
       await refreshCategories();
-    } catch (e: any) {
+      toast.success('Catégorie supprimée.');
+    } catch (e) {
       console.error('Failed to delete category', e);
-      let msg = 'Échec de la suppression.';
-      try { msg = JSON.parse(e.message).detail || msg; } catch {}
-      alert(msg);
+      toast.error(errorMessage(e, 'Échec de la suppression.'));
     }
   };
 
@@ -166,8 +182,7 @@ export default function SettingsPage() {
             <form onSubmit={handleCreateParam} className="bg-panel-2 border border-border rounded-md p-4 grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               <div>
                 <label className="block text-xs font-semibold text-text-dim uppercase mb-1">Clé * (ex: COST_PET_KG)</label>
-                <input type="text" value={newParamName} onChange={(e) => setNewParamName(e.target.value)} required
-                  className="w-full bg-bg border border-border rounded p-2 text-sm text-text focus:outline-none focus:border-cyan-500" />
+                <Input type="text" value={newParamName} onChange={(e) => setNewParamName(e.target.value)} required error={paramErrors.name} />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-text-dim uppercase mb-1">Libellé</label>
@@ -238,13 +253,11 @@ export default function SettingsPage() {
             <form onSubmit={handleSaveCat} className="bg-panel-2 border border-border rounded-md p-4 grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
               <div>
                 <label className="block text-xs font-semibold text-text-dim uppercase mb-1">Nom *</label>
-                <input type="text" value={catName} onChange={(e) => setCatName(e.target.value)} required
-                  className="w-full bg-bg border border-border rounded p-2 text-sm text-text focus:outline-none focus:border-cyan-500" />
+                <Input type="text" value={catName} onChange={(e) => setCatName(e.target.value)} required error={catErrors.name} />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-text-dim uppercase mb-1">Code *</label>
-                <input type="text" value={catCode} onChange={(e) => setCatCode(e.target.value)} required
-                  className="w-full bg-bg border border-border rounded p-2 text-sm text-text focus:outline-none focus:border-cyan-500" />
+                <Input type="text" value={catCode} onChange={(e) => setCatCode(e.target.value)} required error={catErrors.code} />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-text-dim uppercase mb-1">Sévérité par défaut</label>

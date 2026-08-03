@@ -24,6 +24,10 @@ export const qualityApi = {
     method: 'PATCH',
   }),
 
+  deleteNc: (id: number) => fetchClient<void>(`/api/v1/quality/nc/${id}/`, {
+    method: 'DELETE',
+  }),
+
   getOpenNcs: () => fetchClient<NonConformity[]>('/api/v1/quality/nc/open/'),
   getNcsByClause: () => fetchClient<any>('/api/v1/quality/nc/by-clause/'),
 

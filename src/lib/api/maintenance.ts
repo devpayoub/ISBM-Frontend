@@ -25,6 +25,8 @@ export const maintenanceApi = {
 
   getQueue: () => fetchClient<Intervention[]>('/api/v1/maintenance/queue'),
 
+  getByDay: (date: string) => fetchClient<Intervention[]>(`/api/v1/maintenance/by-day?date=${date}`),
+
   getMttr: () => fetchClient<any>('/api/v1/maintenance/mttr'),
 
   // Preventive Maintenance

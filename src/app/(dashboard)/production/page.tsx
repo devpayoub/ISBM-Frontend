@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { productionApi } from '@/lib/api/production';
 import { ProductionEntry } from '@/lib/api/types';
+import { errorMessage } from '@/lib/api/errors';
 
 const MACHINES = [
   { id: 1, name: 'ISBM 110', field: 'bottles_produced' },
@@ -97,8 +99,10 @@ export default function ProductionPage() {
         Object.keys(updated).forEach(k => { updated[k] = { ...updated[k], dirty: false }; });
         return updated;
       });
+      toast.success('Saisie enregistrée.');
     } catch (e) {
       console.error('Save failed', e);
+      toast.error(errorMessage(e, "Échec de l'enregistrement de la saisie."));
     } finally {
       setSaving(false);
     }

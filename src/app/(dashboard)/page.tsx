@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { dashboardApi } from '@/lib/api/dashboard';
+import { alertsApi } from '@/lib/api/alerts';
 import { useAuthStore } from '@/lib/store/useAuthStore';
+import { useAlertStore } from '@/lib/store/useAlertStore';
 import { AndonBoard } from '@/components/dashboard/AndonBoard';
 import { AlertFeed } from '@/components/dashboard/AlertFeed';
 import { AlertDeclareDialog } from '@/components/alerts/AlertDeclareDialog';
@@ -16,6 +18,11 @@ export default function DashboardPage() {
     if (!isAuthenticated) return;
 
     dashboardApi.getKpis().then(setKpis).catch(console.error);
+    // The WebSocket only pushes NEW events from here on — without this,
+    // the Alert Feed store starts empty on every reload and only fills
+    // back up once a fresh alert happens to fire, making already-active
+    // alerts appear to "disappear" on refresh.
+    alertsApi.getActiveAlerts().then(useAlertStore.getState().setInitialAlerts).catch(console.error);
     connectWebSocket();
 
     return () => {

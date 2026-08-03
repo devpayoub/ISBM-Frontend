@@ -1,12 +1,16 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { usersApi } from '@/lib/api/users';
 import { machinesApi } from '@/lib/api/machines';
 import { User, PaginatedResponse, Role, Shift, Machine } from '@/lib/api/types';
 import { useAuthStore } from '@/lib/store/useAuthStore';
+import { errorMessage, parseFieldErrors } from '@/lib/api/errors';
+import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 
-const ROLES: Role[] = ['ADMIN', 'MANAGER', 'CONTROLLER', 'MAINTENANCE', 'OPERATOR'];
+const ROLES: Role[] = ['ADMIN', 'MANAGER', 'CONTROLLER', 'MAINTENANCE', 'OPERATOR', 'SUPPLIER'];
 const SHIFTS: Shift[] = ['MORNING', 'AFTERNOON', 'NIGHT'];
 
 export default function UsersPage() {
@@ -25,8 +29,10 @@ export default function UsersPage() {
   const [role, setRole] = useState<Role>('OPERATOR');
   const [shift, setShift] = useState<Shift>('MORNING');
   const [machineAssignment, setMachineAssignment] = useState('');
+  const [assignedMachines, setAssignedMachines] = useState<number[]>([]);
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300);
@@ -46,6 +52,7 @@ export default function UsersPage() {
   const resetForm = () => {
     setEditingUserId(null);
     setEmail(''); setFirstName(''); setLastName(''); setPassword(''); setMachineAssignment('');
+    setAssignedMachines([]);
     setRole('OPERATOR'); setShift('MORNING');
   };
 
@@ -59,6 +66,7 @@ export default function UsersPage() {
     setEmail(u.email); setFirstName(u.first_name); setLastName(u.last_name);
     setRole(u.role); setShift((u.shift as Shift) || 'MORNING');
     setMachineAssignment(u.machine_assignment ? String(u.machine_assignment) : '');
+    setAssignedMachines(u.assigned_machines || []);
     setPassword('');
     setShowForm(true);
   };
@@ -66,6 +74,7 @@ export default function UsersPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setFieldErrors({});
     try {
       if (editingUserId) {
         await usersApi.updateUser(editingUserId, {
@@ -74,7 +83,9 @@ export default function UsersPage() {
           role,
           shift,
           machine_assignment: role === 'CONTROLLER' && machineAssignment ? parseInt(machineAssignment) : null,
+          assigned_machines: role === 'SUPPLIER' ? assignedMachines : [],
         });
+        toast.success('Utilisateur mis à jour.');
       } else {
         await usersApi.createUser({
           email,
@@ -83,14 +94,18 @@ export default function UsersPage() {
           role,
           shift,
           machine_assignment: role === 'CONTROLLER' && machineAssignment ? parseInt(machineAssignment) : null,
+          assigned_machines: role === 'SUPPLIER' ? assignedMachines : [],
           password,
         });
+        toast.success('Utilisateur créé.');
       }
       resetForm();
       setShowForm(false);
       await refresh();
     } catch (e) {
       console.error('Failed to save user', e);
+      setFieldErrors(parseFieldErrors(e));
+      toast.error(errorMessage(e, "Échec de l'enregistrement de l'utilisateur."));
     } finally {
       setIsSubmitting(false);
     }
@@ -98,15 +113,17 @@ export default function UsersPage() {
 
   const handleDelete = async (u: User) => {
     if (u.id === authUser?.id) {
-      alert('Vous ne pouvez pas supprimer votre propre compte.');
+      toast.error('Vous ne pouvez pas supprimer votre propre compte.');
       return;
     }
     if (!confirm(`Supprimer définitivement ${u.first_name} ${u.last_name} (${u.email}) ?`)) return;
     try {
       await usersApi.deleteUser(u.id);
       await refresh();
+      toast.success('Utilisateur supprimé.');
     } catch (e) {
       console.error('Failed to delete user', e);
+      toast.error("Échec de la suppression de l'utilisateur.");
     }
   };
 
@@ -160,8 +177,8 @@ export default function UsersPage() {
           {!editingUserId && (
             <div>
               <label className="block text-xs font-semibold text-text-dim uppercase mb-1">Email *</label>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required
-                className="w-full bg-bg border border-border rounded p-2 text-sm text-text focus:outline-none focus:border-cyan-500" />
+              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required
+                error={fieldErrors.email} />
             </div>
           )}
           <div>
@@ -200,11 +217,34 @@ export default function UsersPage() {
               </select>
             </div>
           )}
+          {role === 'SUPPLIER' && (
+            <div className="col-span-full">
+              <label className="block text-xs font-semibold text-text-dim uppercase mb-1">Machines suivies par ce fournisseur</label>
+              <div className="flex flex-wrap gap-2 bg-bg border border-border rounded p-2">
+                {machines.map(m => {
+                  const checked = assignedMachines.includes(m.id);
+                  return (
+                    <label key={m.id} className={`text-xs px-2 py-1 rounded border cursor-pointer ${checked ? 'bg-cyan-500/10 border-cyan-500 text-cyan-500' : 'border-border text-text-dim'}`}>
+                      <input
+                        type="checkbox"
+                        className="hidden"
+                        checked={checked}
+                        onChange={(e) => setAssignedMachines(prev =>
+                          e.target.checked ? [...prev, m.id] : prev.filter(id => id !== m.id)
+                        )}
+                      />
+                      {m.name} ({m.code})
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           {!editingUserId && (
             <div>
               <label className="block text-xs font-semibold text-text-dim uppercase mb-1">Mot de passe *</label>
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required
-                className="w-full bg-bg border border-border rounded p-2 text-sm text-text focus:outline-none focus:border-cyan-500" />
+              <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} required
+                error={fieldErrors.password} />
             </div>
           )}
           <div className="col-span-full flex justify-end gap-3">

@@ -1,5 +1,5 @@
 // ──────────────────────────── Enums ────────────────────────────
-export type Role = 'ADMIN' | 'MANAGER' | 'CONTROLLER' | 'MAINTENANCE' | 'OPERATOR';
+export type Role = 'ADMIN' | 'MANAGER' | 'CONTROLLER' | 'MAINTENANCE' | 'OPERATOR' | 'SUPPLIER';
 export type Shift = 'MORNING' | 'AFTERNOON' | 'NIGHT';
 export type MachineType = 'ISBM' | 'INJECTION' | 'COMPRESSOR' | 'CHILLER' | 'DRYER';
 export type MachineStatus = 'RUNNING' | 'STOPPED' | 'MAINTENANCE' | 'BREAKDOWN';
@@ -22,6 +22,7 @@ export interface User {
   is_on_duty: boolean;
   is_active: boolean;
   machine_assignment?: number | null;
+  assigned_machines?: number[];
   date_joined?: string;
 }
 
@@ -38,6 +39,8 @@ export interface Machine {
   cavities: number;
   product_format?: string;
   location?: string;
+  serial_number?: string;
+  manufacturer?: string;
   is_active: boolean;
 }
 
@@ -113,6 +116,7 @@ export interface Intervention {
   machine_name?: string;
   technician: number;
   technician_name?: string;
+  reported_by_name?: string;
   action_taken?: string;
   parts_used?: string;
   started_at: string;
@@ -281,6 +285,130 @@ export interface ActivityLog {
   target_id: number | null;
   detail: string;
   created_at: string;
+}
+
+// ──────────────────────────── Support / SAV ────────────────────────────
+export type TicketCriticality = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+export type TicketStatus =
+  | 'NEW' | 'AWAITING_SUPPLIER' | 'DIAGNOSING' | 'SOLUTION_PROPOSED'
+  | 'INTERVENING' | 'RESOLVED' | 'CLOSED';
+export type TicketValidationDecision =
+  | 'ACCEPTED' | 'REFUSED' | 'INFO_REQUESTED' | 'ONSITE_REQUESTED' | 'VIDEOCALL_REQUESTED';
+export type TicketAttachmentCategory =
+  | 'PHOTO' | 'VIDEO' | 'PDF' | 'REPORT' | 'SCREENSHOT' | 'ALARM_LOG' | 'TECHNICAL_FILE';
+
+export interface TicketAttachment {
+  id: number;
+  ticket: number;
+  file: string;
+  category: TicketAttachmentCategory;
+  uploaded_by?: number;
+  uploaded_by_name?: string;
+  uploaded_at: string;
+}
+
+export interface TicketComment {
+  id: number;
+  ticket: number;
+  user: number;
+  user_name?: string;
+  text: string;
+  created_at: string;
+}
+
+export interface TicketStatusLog {
+  id: number;
+  ticket: number;
+  from_status: TicketStatus | '';
+  to_status: TicketStatus;
+  decision: TicketValidationDecision | '';
+  reason: string;
+  changed_by?: number;
+  changed_by_name?: string;
+  created_at: string;
+}
+
+export interface SupplierSolution {
+  id: number;
+  ticket: number;
+  diagnostic: string;
+  probable_cause: string;
+  root_cause: string;
+  repair_procedure: string;
+  spare_parts: string;
+  estimated_duration_min?: number;
+  urgency: TicketCriticality;
+  proposed_by?: number;
+  proposed_by_name?: string;
+  proposed_at: string;
+}
+
+export interface TicketClosure {
+  id: number;
+  ticket: number;
+  repair_conforms: boolean;
+  restarted_at?: string;
+  total_downtime_min: number;
+  intervention_duration_min?: number;
+  parts_replaced: string;
+  intervention_cost?: number | string;
+  closed_by?: number;
+  closed_by_name?: string;
+  closed_at: string;
+}
+
+export interface Ticket {
+  id: number;
+  ticket_number: string;
+  machine: number;
+  machine_detail?: Machine;
+  alert?: number | null;
+  reported_by?: number;
+  reported_by_name?: string;
+  assigned_supplier?: number;
+  assigned_supplier_name?: string;
+  criticality: TicketCriticality;
+  status: TicketStatus;
+  production_line?: string;
+  equipment_detail?: string;
+  error_code?: string;
+  description: string;
+  symptoms?: string;
+  production_impacted?: string;
+  downtime_start?: string;
+  downtime_end?: string;
+  attachments: TicketAttachment[];
+  comments: TicketComment[];
+  status_logs: TicketStatusLog[];
+  solutions: SupplierSolution[];
+  closure?: TicketClosure | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SupportKPIByMachine {
+  machine__code: string;
+  count: number;
+  mttr_min: number;
+  mtbf_min: number | null;
+}
+
+export interface SupportKPIBySupplier {
+  supplier_name: string;
+  count: number;
+  avg_cost: number | null;
+  total_cost: number | null;
+}
+
+export interface SupportKPIs {
+  window_days: number;
+  ticket_count: number;
+  avg_supplier_response_min: number | null;
+  avg_resolution_min: number | null;
+  avg_intervention_cost: number | null;
+  total_intervention_cost: number | null;
+  by_machine: SupportKPIByMachine[];
+  by_supplier: SupportKPIBySupplier[];
 }
 
 // ──────────────────────────── Pagination ────────────────────────────

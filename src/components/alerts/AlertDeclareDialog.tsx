@@ -1,11 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import { useAuthStore } from '@/lib/store/useAuthStore';
 import { can } from '@/lib/auth/rbac';
 import { alertsApi } from '@/lib/api/alerts';
 import { machinesApi } from '@/lib/api/machines';
 import { Machine, AlertCategory, PaginatedResponse } from '@/lib/api/types';
+import { errorMessage } from '@/lib/api/errors';
 
 export function AlertDeclareDialog() {
   const [isOpen, setIsOpen] = useState(false);
@@ -59,8 +61,10 @@ export function AlertDeclareDialog() {
       setCategory('');
       setSeverity('MAJOR');
       setIsOpen(false);
+      toast.success('Alerte déclarée.');
     } catch (e) {
       console.error('Failed to create alert', e);
+      toast.error(errorMessage(e, "Échec de la déclaration de l'alerte."));
     } finally {
       setIsLoading(false);
     }

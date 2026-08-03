@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/lib/store/useAuthStore";
 import { fetchClient } from "@/lib/api/client";
+import { PasswordInput } from "@/components/ui/password-input";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -24,9 +25,11 @@ export default function LoginPage() {
       });
       setTokens(response.access, response.refresh);
       if (response.user) setUser(response.user);
-      router.push("/");
+      // Suppliers have no access to the internal dashboard — land them
+      // straight on their ticket portal instead.
+      router.push(response.user?.role === "SUPPLIER" ? "/support" : "/");
     } catch (err: any) {
-      setError("Identifiants incorrects.");
+      setError("Email ou mot de passe incorrect.");
     } finally {
       setLoading(false);
     }
@@ -57,9 +60,8 @@ export default function LoginPage() {
             <label className="block text-sm font-sans mb-1 text-muted-foreground">
               Mot de passe
             </label>
-            <input 
-              type="password" 
-              className="w-full border p-2 rounded-md bg-input text-foreground outline-none focus:ring-1 focus:ring-ring"
+            <PasswordInput
+              className="border bg-input text-foreground outline-none focus:ring-1 focus:ring-ring focus:border-transparent"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required

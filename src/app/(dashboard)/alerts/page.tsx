@@ -27,6 +27,17 @@ export default function AlertsPage() {
 
   const alertsList = Array.isArray(data?.results) ? data.results : Array.isArray(data) ? (data as unknown as Alert[]) : [];
 
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'OPEN': return 'bg-red-500/10 text-red-500';
+      case 'ACKNOWLEDGED': return 'bg-orange-500/10 text-orange-500';
+      case 'IN_PROGRESS': return 'bg-blue-500/10 text-blue-500';
+      case 'RESOLVED': return 'bg-cyan-500/10 text-cyan-500';
+      case 'CLOSED': return 'bg-gray-700/30 text-gray-400';
+      default: return 'bg-gray-500/10 text-gray-400';
+    }
+  };
+
   return (
     <div className="p-6 space-y-6 h-full flex flex-col">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
@@ -71,7 +82,7 @@ export default function AlertsPage() {
                   <td className="py-3 pr-4 font-sans text-sm font-medium">{alert.title}</td>
                   <td className="py-3 pr-4 font-sans text-sm text-text-dim">{alert.machine_name}</td>
                   <td className="py-3 pr-4 whitespace-nowrap">
-                    <span className="font-mono text-xs bg-bg px-2 py-1 rounded">{alert.status}</span>
+                    <span className={`font-mono text-[10px] px-2 py-1 rounded ${getStatusBadge(alert.status)}`}>{alert.status}</span>
                   </td>
                   <td className="py-3 pr-4 font-mono text-xs text-text-dim whitespace-nowrap">
                     {new Date(alert.created_at).toLocaleDateString()} {new Date(alert.created_at).toLocaleTimeString()}

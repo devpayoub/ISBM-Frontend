@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type UserRole = 'ADMIN' | 'MANAGER' | 'CONTROLLER' | 'MAINTENANCE' | 'OPERATOR';
+export type UserRole = 'ADMIN' | 'MANAGER' | 'CONTROLLER' | 'MAINTENANCE' | 'OPERATOR' | 'SUPPLIER';
 
 export interface AuthUser {
   id: number;
@@ -12,6 +12,7 @@ export interface AuthUser {
   shift?: string;
   is_on_duty: boolean;
   machine_assignment?: number | null;
+  assigned_machines?: number[];
 }
 
 interface AuthStore {

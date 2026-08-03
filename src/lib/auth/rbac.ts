@@ -3,7 +3,8 @@ export type UserRole =
   | 'MANAGER'
   | 'CONTROLLER'
   | 'MAINTENANCE'
-  | 'OPERATOR';
+  | 'OPERATOR'
+  | 'SUPPLIER';
 
 type Action =
   | 'declare_alert'
@@ -13,26 +14,35 @@ type Action =
   | 'close_alert'
   | 'verify_alert'
   | 'manage_users'
-  | 'edit_settings';
+  | 'edit_settings'
+  | 'declare_ticket'
+  | 'assign_ticket_supplier'
+  | 'propose_ticket_solution'
+  | 'validate_ticket'
+  | 'close_ticket';
 
-// Kept in sync with the role checks in Backend/apps/alerts/views.py and
-// Backend/apps/maintenance/views.py — update both sides together.
+// Kept in sync with the role checks in Backend/apps/alerts/views.py,
+// Backend/apps/maintenance/views.py and Backend/apps/support/views.py —
+// update all sides together.
 const rolePermissions: Record<UserRole, Action[]> = {
   ADMIN: [
     'declare_alert', 'acknowledge_alert', 'start_alert', 'resolve_alert',
-    'close_alert', 'verify_alert', 'manage_users', 'edit_settings'
+    'close_alert', 'verify_alert', 'manage_users', 'edit_settings',
+    'declare_ticket', 'assign_ticket_supplier', 'validate_ticket', 'close_ticket',
   ],
   MANAGER: [
     'declare_alert', 'acknowledge_alert', 'start_alert', 'resolve_alert',
-    'close_alert', 'verify_alert', 'edit_settings'
+    'close_alert', 'verify_alert', 'edit_settings',
+    'declare_ticket', 'assign_ticket_supplier', 'validate_ticket', 'close_ticket',
   ],
   CONTROLLER: [
-    'declare_alert', 'verify_alert'
+    'declare_alert', 'verify_alert',
   ],
   MAINTENANCE: [
-    'acknowledge_alert', 'start_alert'
+    'declare_ticket', 'assign_ticket_supplier', 'validate_ticket', 'close_ticket',
   ],
-  OPERATOR: []
+  OPERATOR: ['declare_ticket'],
+  SUPPLIER: ['propose_ticket_solution'],
 };
 
 export function can(role: string | undefined | null, action: Action): boolean {

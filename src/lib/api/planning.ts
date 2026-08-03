@@ -11,7 +11,16 @@ export const planningApi = {
     method: 'POST',
     body: JSON.stringify(data),
   }),
-  
+
+  updatePlan: (id: number, data: Partial<ProductionPlan>) => fetchClient<ProductionPlan>(`/api/v1/planning/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  }),
+
+  deletePlan: (id: number) => fetchClient<void>(`/api/v1/planning/${id}`, {
+    method: 'DELETE',
+  }),
+
   getTodayPlan: () => fetchClient<any>('/api/v1/planning/today'),
   
   getVarianceReport: (date: string) => fetchClient<any>(`/api/v1/planning/variance-report?date=${date}`),

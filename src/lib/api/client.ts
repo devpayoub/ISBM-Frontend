@@ -8,6 +8,7 @@ export class ApiError extends Error {
 }
 
 const REFRESH_ENDPOINT = '/api/v1/auth/refresh';
+const LOGIN_ENDPOINT = '/api/v1/auth/login';
 
 // Shared across concurrent 401s so a burst of requests triggers exactly one
 // refresh call instead of one per request.
@@ -59,7 +60,7 @@ export async function fetchClient<T>(
   // (15 min lifetime) — silently refresh and retry once before giving up.
   // Logout must only happen when the user clicks it, or the refresh token
   // itself (7 day lifetime) is dead.
-  if (response.status === 401 && endpoint !== REFRESH_ENDPOINT) {
+  if (response.status === 401 && endpoint !== REFRESH_ENDPOINT && endpoint !== LOGIN_ENDPOINT) {
     const newAccessToken = await refreshAccessToken();
     if (newAccessToken) {
       response = await fetch(endpoint, buildRequest(options, newAccessToken));
@@ -67,7 +68,10 @@ export async function fetchClient<T>(
   }
 
   if (!response.ok) {
-    if (response.status === 401) {
+    // A 401 on the login request itself just means "wrong credentials" —
+    // let the caller (the login form) handle and display that. Only a 401
+    // on an authenticated request means the session is actually dead.
+    if (response.status === 401 && endpoint !== LOGIN_ENDPOINT) {
       logout();
       window.location.href = '/login';
     }

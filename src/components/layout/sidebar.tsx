@@ -5,37 +5,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuthStore } from "@/lib/store/useAuthStore";
 import { useAlertStore } from "@/lib/store/useAlertStore";
+import { useMaintenanceStore } from "@/lib/store/useMaintenanceStore";
 import { authApi } from "@/lib/api/auth";
-import {
-  LayoutDashboard,
-  AlertCircle,
-  Server,
-  Activity,
-  BarChart3,
-  DollarSign,
-  Calendar,
-  Wrench,
-  Users,
-  Settings,
-  Shield,
-  History,
-  LogOut,
-} from "lucide-react";
-
-const allRoutes = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard, roles: null },
-  { href: "/alerts", label: "Alertes", icon: AlertCircle, roles: null, badge: true },
-  { href: "/machines", label: "Machines", icon: Server, roles: ["ADMIN", "MANAGER", "MAINTENANCE", "OPERATOR"] },
-  { href: "/production", label: "Saisie", icon: Activity, roles: ["ADMIN", "MANAGER", "OPERATOR"] },
-  { href: "/oee", label: "TRS / OEE", icon: BarChart3, roles: ["ADMIN", "MANAGER", "OPERATOR"] },
-  { href: "/costs", label: "Coûts", icon: DollarSign, roles: ["ADMIN", "MANAGER"] },
-  { href: "/planning", label: "Planning", icon: Calendar, roles: ["ADMIN", "MANAGER", "OPERATOR"] },
-  { href: "/maintenance", label: "Maintenance", icon: Wrench, roles: ["ADMIN", "MANAGER", "MAINTENANCE"] },
-  { href: "/quality", label: "Qualité ISO", icon: Shield, roles: ["ADMIN", "MANAGER"] },
-  { href: "/audit", label: "Journal d'activité", icon: History, roles: ["ADMIN"] },
-  { href: "/users", label: "Utilisateurs", icon: Users, roles: ["ADMIN"] },
-  { href: "/settings", label: "Paramètres", icon: Settings, roles: ["ADMIN", "MANAGER"] },
-];
+import { maintenanceApi } from "@/lib/api/maintenance";
+import { appRoutes } from "@/lib/auth/routes";
+import { LogOut } from "lucide-react";
 
 interface SidebarProps {
   open: boolean;
@@ -46,6 +20,8 @@ export function Sidebar({ open, onClose }: SidebarProps) {
   const pathname = usePathname();
   const user = useAuthStore((state) => state.user);
   const liveAlerts = useAlertStore((state) => state.liveAlerts);
+  const maintenanceQueueCount = useMaintenanceStore((state) => state.queueCount);
+  const setQueueCount = useMaintenanceStore((state) => state.setQueueCount);
   const logout = useAuthStore((state) => state.logout);
 
   // Auto-close the mobile drawer whenever the route changes.
@@ -54,9 +30,22 @@ export function Sidebar({ open, onClose }: SidebarProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
-  const visibleRoutes = allRoutes.filter(
+  const visibleRoutes = appRoutes.filter(
     (route) => route.roles === null || (user?.role && route.roles.includes(user.role))
   );
+
+  // Maintenance has no WebSocket feed, so the sidebar badge polls the
+  // pending-intervention count itself — only for roles that can actually
+  // see the Maintenance link, and only while the sidebar (i.e. any
+  // dashboard page) is mounted, not just while on /maintenance itself.
+  const canSeeMaintenance = visibleRoutes.some((r) => r.href === "/maintenance");
+  useEffect(() => {
+    if (!canSeeMaintenance) return;
+    const poll = () => maintenanceApi.getQueue().then((rows) => setQueueCount(rows.length)).catch(() => {});
+    poll();
+    const interval = setInterval(poll, 5000);
+    return () => clearInterval(interval);
+  }, [canSeeMaintenance, setQueueCount]);
 
   const handleLogout = async () => {
     try {
@@ -89,6 +78,9 @@ export function Sidebar({ open, onClose }: SidebarProps) {
       <nav className="flex-1 p-3 space-y-0.5 overflow-auto">
         {visibleRoutes.map((route) => {
           const isActive = pathname === route.href;
+          const badgeCount = route.badge === "alerts" ? liveAlerts.length
+            : route.badge === "maintenance" ? maintenanceQueueCount
+            : 0;
           return (
             <Link
               key={route.href}
@@ -103,9 +95,9 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                 <route.icon className="w-4 h-4" />
                 {route.label}
               </div>
-              {route.badge && liveAlerts.length > 0 && (
+              {badgeCount > 0 && (
                 <span className="w-5 h-5 bg-destructive rounded-full text-[10px] flex items-center justify-center text-destructive-foreground font-mono">
-                  {liveAlerts.length}
+                  {badgeCount}
                 </span>
               )}
             </Link>

@@ -1,10 +1,13 @@
 'use client';
 
 import { use, useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { alertsApi } from '@/lib/api/alerts';
 import { Alert } from '@/lib/api/types';
 import { AlertLifecycleStepper } from '@/components/alerts/AlertLifecycleStepper';
 import { VerifySolvedToggle } from '@/components/maintenance/VerifySolvedToggle';
+import { errorMessage } from '@/lib/api/errors';
+import { BackButton } from '@/components/ui/back-button';
 
 export default function AlertDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -26,6 +29,7 @@ export default function AlertDetailPage({ params }: { params: Promise<{ id: stri
       if (updated) setAlert(updated);
     } catch (e) {
       console.error('Action failed', e);
+      toast.error(errorMessage(e, "Échec de l'action."));
     }
   };
 
@@ -36,9 +40,12 @@ export default function AlertDetailPage({ params }: { params: Promise<{ id: stri
       <div className="bg-panel border border-border rounded-md overflow-hidden">
         <div className={`p-6 border-b ${alert.severity === 'CRITICAL' ? 'bg-red-500/10 border-red-500/20' : 'bg-orange-500/10 border-orange-500/20'}`}>
           <div className="flex justify-between items-start">
-            <div>
-              <h1 className="font-heading font-bold text-2xl text-text">{alert.title}</h1>
-              <p className="text-text-dim mt-2">{alert.machine_name} • {alert.category_detail?.name}</p>
+            <div className="flex items-start gap-3">
+              <BackButton fallbackHref="/alerts" />
+              <div>
+                <h1 className="font-heading font-bold text-2xl text-text">{alert.title}</h1>
+                <p className="text-text-dim mt-2">{alert.machine_name} • {alert.category_detail?.name}</p>
+              </div>
             </div>
             <span className="font-mono bg-bg px-3 py-1 rounded text-sm text-text-dim">
               {new Date(alert.created_at).toLocaleString()}

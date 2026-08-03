@@ -2,10 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { toast } from 'sonner';
 import { machinesApi } from '@/lib/api/machines';
 import { Machine, MachineType, PaginatedResponse } from '@/lib/api/types';
 import { useAlertStore } from '@/lib/store/useAlertStore';
 import { useAuthStore } from '@/lib/store/useAuthStore';
+import { errorMessage, parseFieldErrors } from '@/lib/api/errors';
+import { Input } from '@/components/ui/input';
 
 const MACHINE_TYPES: MachineType[] = ['ISBM', 'INJECTION', 'COMPRESSOR', 'CHILLER', 'DRYER'];
 
@@ -26,6 +29,7 @@ export default function MachinesPage() {
   const [cavities, setCavities] = useState('0');
   const [productFormat, setProductFormat] = useState('');
   const [location, setLocation] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     machinesApi.getMachines().then(setData).catch(console.error);
@@ -41,6 +45,7 @@ export default function MachinesPage() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setFieldErrors({});
     try {
       await machinesApi.createMachine({
         name, code, type,
@@ -53,8 +58,11 @@ export default function MachinesPage() {
       resetForm();
       setShowForm(false);
       await refresh();
+      toast.success('Machine créée.');
     } catch (e) {
       console.error('Failed to create machine', e);
+      setFieldErrors(parseFieldErrors(e));
+      toast.error(errorMessage(e, 'Échec de la création de la machine.'));
     } finally {
       setIsSubmitting(false);
     }
@@ -101,13 +109,11 @@ export default function MachinesPage() {
         <form onSubmit={handleCreate} className="bg-panel border border-border rounded-md p-4 grid grid-cols-2 md:grid-cols-4 gap-4">
           <div>
             <label className="block text-xs font-semibold text-text-dim uppercase mb-1">Nom *</label>
-            <input type="text" value={name} onChange={(e) => setName(e.target.value)} required
-              className="w-full bg-bg border border-border rounded p-2 text-sm text-text focus:outline-none focus:border-cyan-500" />
+            <Input type="text" value={name} onChange={(e) => setName(e.target.value)} required error={fieldErrors.name} />
           </div>
           <div>
             <label className="block text-xs font-semibold text-text-dim uppercase mb-1">Code *</label>
-            <input type="text" value={code} onChange={(e) => setCode(e.target.value)} required
-              className="w-full bg-bg border border-border rounded p-2 text-sm text-text focus:outline-none focus:border-cyan-500" />
+            <Input type="text" value={code} onChange={(e) => setCode(e.target.value)} required error={fieldErrors.code} />
           </div>
           <div>
             <label className="block text-xs font-semibold text-text-dim uppercase mb-1">Type</label>
