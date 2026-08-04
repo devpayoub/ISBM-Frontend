@@ -9,6 +9,7 @@ import { useAuthStore } from '@/lib/store/useAuthStore';
 import { errorMessage, parseFieldErrors } from '@/lib/api/errors';
 import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
+import { ROLE_LABELS } from '@/lib/auth/rbac';
 
 const ROLES: Role[] = ['ADMIN', 'MANAGER', 'CONTROLLER', 'MAINTENANCE', 'OPERATOR', 'SUPPLIER'];
 const SHIFTS: Shift[] = ['MORNING', 'AFTERNOON', 'NIGHT'];
@@ -195,7 +196,7 @@ export default function UsersPage() {
             <label className="block text-xs font-semibold text-text-dim uppercase mb-1">Rôle</label>
             <select value={role} onChange={(e) => setRole(e.target.value as Role)}
               className="w-full bg-bg border border-border rounded p-2 text-sm text-text focus:outline-none focus:border-cyan-500">
-              {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+              {ROLES.map(r => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
             </select>
           </div>
           <div>
@@ -288,7 +289,7 @@ export default function UsersPage() {
                 <td className="py-3 font-sans text-sm font-medium">{u.first_name} {u.last_name}</td>
                 <td className="py-3 font-mono text-xs text-text-dim">{u.email}</td>
                 <td className="py-3">
-                  <span className={`text-[10px] font-mono px-2 py-0.5 rounded ${getRoleBadge(u.role)}`}>{u.role}</span>
+                  <span className={`text-[10px] font-mono px-2 py-0.5 rounded ${getRoleBadge(u.role)}`}>{ROLE_LABELS[u.role]}</span>
                 </td>
                 <td className="py-3">
                   {u.role === 'CONTROLLER' ? (

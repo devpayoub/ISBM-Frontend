@@ -9,6 +9,7 @@ import { useMaintenanceStore } from "@/lib/store/useMaintenanceStore";
 import { authApi } from "@/lib/api/auth";
 import { maintenanceApi } from "@/lib/api/maintenance";
 import { appRoutes } from "@/lib/auth/routes";
+import { ROLE_LABELS, UserRole } from "@/lib/auth/rbac";
 import { LogOut } from "lucide-react";
 
 interface SidebarProps {
@@ -113,7 +114,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
               {user ? `${user.first_name} ${user.last_name}` : "—"}
             </div>
             <div className="text-[10px] font-mono text-muted-foreground uppercase">
-              {user?.role || "—"}
+              {user?.role ? (ROLE_LABELS[user.role as UserRole] || user.role) : "—"}
             </div>
           </div>
           <button

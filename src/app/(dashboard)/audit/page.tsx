@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { auditApi } from '@/lib/api/audit';
 import { usersApi } from '@/lib/api/users';
 import { ActivityLog, PaginatedResponse, User } from '@/lib/api/types';
+import { ROLE_LABELS } from '@/lib/auth/rbac';
 
 const ACTION_LABELS: Record<string, string> = {
   'alert.declared': 'Alerte déclarée',
@@ -62,7 +63,7 @@ export default function AuditPage() {
           className="bg-bg border border-border rounded p-2 text-sm text-text focus:outline-none focus:border-cyan-500"
         >
           <option value="">Tous les utilisateurs</option>
-          {users.map(u => <option key={u.id} value={u.id}>{u.first_name} {u.last_name} ({u.role})</option>)}
+          {users.map(u => <option key={u.id} value={u.id}>{u.first_name} {u.last_name} ({ROLE_LABELS[u.role]})</option>)}
         </select>
         <select
           value={actionFilter}

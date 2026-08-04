@@ -14,7 +14,7 @@ const CATEGORY_LABELS: Record<TicketAttachmentCategory, string> = {
   TECHNICAL_FILE: 'Fichier technique',
 };
 
-export function TicketAttachmentUpload({ ticketId, onUploaded }: { ticketId: number; onUploaded?: () => void }) {
+export function TicketAttachmentUpload({ ticketId, solutionId, onUploaded }: { ticketId: number; solutionId?: number; onUploaded?: () => void }) {
   const [category, setCategory] = useState<TicketAttachmentCategory>('PHOTO');
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
@@ -28,7 +28,7 @@ export function TicketAttachmentUpload({ ticketId, onUploaded }: { ticketId: num
       // Sequential, not parallel: keeps upload order predictable and avoids
       // hammering the backend with N simultaneous multipart requests.
       for (const file of Array.from(files)) {
-        await supportApi.addAttachment(ticketId, file, category);
+        await supportApi.addAttachment(ticketId, file, category, solutionId);
       }
       onUploaded?.();
     } catch (e) {

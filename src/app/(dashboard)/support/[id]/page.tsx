@@ -2,7 +2,7 @@
 
 import { use, useEffect, useState } from 'react';
 import { supportApi } from '@/lib/api/support';
-import { Ticket, TicketCriticality, TicketValidationDecision } from '@/lib/api/types';
+import { CommentRequestType, Ticket, TicketCriticality, TicketValidationDecision } from '@/lib/api/types';
 import { useAuthStore } from '@/lib/store/useAuthStore';
 import { can } from '@/lib/auth/rbac';
 import { TicketAttachmentUpload } from '@/components/support/TicketAttachmentUpload';
@@ -16,6 +16,12 @@ const STATUS_LABELS: Record<string, string> = {
   INTERVENING: 'Intervention en cours',
   RESOLVED: 'Résolu',
   CLOSED: 'Clôturé',
+};
+
+const REQUEST_TYPE_LABELS: Record<string, string> = {
+  QUESTION: '❓ Question',
+  TEST_REQUEST: '🧪 Essai demandé',
+  PHOTO_REQUEST: '📷 Photos demandées',
 };
 
 // Explains what's happening / whose turn it is at each status, so a role
@@ -52,6 +58,7 @@ export default function TicketDetailPage({ params }: { params: Promise<{ id: str
   const ticketId = parseInt(id);
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [comment, setComment] = useState('');
+  const [requestType, setRequestType] = useState<CommentRequestType>('');
   const [reasonById, setReasonById] = useState('');
   const user = useAuthStore((state) => state.user);
 
@@ -63,11 +70,13 @@ export default function TicketDetailPage({ params }: { params: Promise<{ id: str
   const [spareParts, setSpareParts] = useState('');
   const [estimatedDuration, setEstimatedDuration] = useState('');
   const [urgency, setUrgency] = useState<TicketCriticality>('MEDIUM');
+  const [justProposedSolutionId, setJustProposedSolutionId] = useState<number | null>(null);
 
   // Closure form
   const [partsReplaced, setPartsReplaced] = useState('');
   const [interventionMin, setInterventionMin] = useState('');
   const [repairConforms, setRepairConforms] = useState(true);
+  const [machineBackInService, setMachineBackInService] = useState(true);
   const [interventionCost, setInterventionCost] = useState('');
 
   const reload = () => supportApi.getTicket(ticketId).then(setTicket).catch(console.error);
@@ -95,6 +104,9 @@ export default function TicketDetailPage({ params }: { params: Promise<{ id: str
       setTicket(updated);
       setDiagnostic(''); setProbableCause(''); setRootCause(''); setRepairProcedure('');
       setSpareParts(''); setEstimatedDuration(''); setUrgency('MEDIUM');
+      // Solutions are ordered newest-first (see SupplierSolution.Meta.ordering),
+      // so the one we just created is always the first entry.
+      setJustProposedSolutionId(updated.solutions[0]?.id ?? null);
     } catch (e) {
       console.error('Failed to propose solution', e);
     }
@@ -119,6 +131,7 @@ export default function TicketDetailPage({ params }: { params: Promise<{ id: str
     try {
       const updated = await supportApi.close(ticket.id, {
         repair_conforms: repairConforms,
+        machine_back_in_service: machineBackInService,
         intervention_duration_min: interventionMin ? parseInt(interventionMin) : undefined,
         parts_replaced: partsReplaced,
         intervention_cost: interventionCost ? parseFloat(interventionCost) : undefined,
@@ -133,8 +146,9 @@ export default function TicketDetailPage({ params }: { params: Promise<{ id: str
     e.preventDefault();
     if (!comment.trim()) return;
     try {
-      await supportApi.addComment(ticket.id, comment);
+      await supportApi.addComment(ticket.id, comment, requestType);
       setComment('');
+      setRequestType('');
       reload();
     } catch (e) {
       console.error('Failed to add comment', e);
@@ -234,6 +248,16 @@ export default function TicketDetailPage({ params }: { params: Promise<{ id: str
             </form>
           )}
 
+          {/* Supplier: attach technical docs to the solution just sent */}
+          {isSupplier && justProposedSolutionId != null && (
+            <div className="pt-4 border-t border-border space-y-2">
+              <h3 className="text-xs uppercase tracking-wider text-text-dim font-semibold">
+                Joindre la documentation technique (notice, plans, vidéo...)
+              </h3>
+              <TicketAttachmentUpload ticketId={ticket.id} solutionId={justProposedSolutionId} onUploaded={reload} />
+            </div>
+          )}
+
           {/* Solutions history */}
           {ticket.solutions.length > 0 && (
             <div className="pt-4 border-t border-border space-y-3">
@@ -247,6 +271,16 @@ export default function TicketDetailPage({ params }: { params: Promise<{ id: str
                   {s.repair_procedure && <div><span className="text-text-dim">Procédure:</span> {s.repair_procedure}</div>}
                   {s.spare_parts && <div><span className="text-text-dim">Pièces:</span> {s.spare_parts}</div>}
                   {s.estimated_duration_min != null && <div><span className="text-text-dim">Durée estimée:</span> {s.estimated_duration_min} min</div>}
+                  {s.attachments && s.attachments.length > 0 && (
+                    <div className="pt-1">
+                      <span className="text-text-dim">Documents:</span>{' '}
+                      {s.attachments.map((a, i) => (
+                        <a key={a.id} href={a.file} target="_blank" rel="noreferrer" className="text-cyan-500 hover:text-cyan-400">
+                          {i > 0 && ', '}{a.category}
+                        </a>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -276,6 +310,10 @@ export default function TicketDetailPage({ params }: { params: Promise<{ id: str
                 <input type="checkbox" checked={repairConforms} onChange={e => setRepairConforms(e.target.checked)} />
                 La réparation est conforme
               </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={machineBackInService} onChange={e => setMachineBackInService(e.target.checked)} />
+                La machine est remise en service
+              </label>
               <input placeholder="Pièces remplacées" value={partsReplaced} onChange={e => setPartsReplaced(e.target.value)}
                 className="w-full bg-bg border border-border rounded p-2 text-sm text-text" />
               <input type="number" placeholder="Durée d'intervention (min)" value={interventionMin} onChange={e => setInterventionMin(e.target.value)}
@@ -295,6 +333,7 @@ export default function TicketDetailPage({ params }: { params: Promise<{ id: str
               {ticket.closure.parts_replaced && <div>Pièces remplacées : {ticket.closure.parts_replaced}</div>}
               {ticket.closure.intervention_cost != null && <div>Coût de l'intervention : {ticket.closure.intervention_cost}</div>}
               <div>Conforme : {ticket.closure.repair_conforms ? 'Oui' : 'Non'}</div>
+              <div>Machine remise en service : {ticket.closure.machine_back_in_service ? 'Oui' : 'Non'}</div>
             </div>
           )}
 
@@ -321,14 +360,30 @@ export default function TicketDetailPage({ params }: { params: Promise<{ id: str
             <div className="space-y-2">
               {ticket.comments.map(c => (
                 <div key={c.id} className="bg-bg border border-border rounded p-2 text-sm">
-                  <div className="text-xs text-text-dim">{c.user_name} — {new Date(c.created_at).toLocaleString()}</div>
+                  <div className="text-xs text-text-dim flex items-center gap-2">
+                    <span>{c.user_name} — {new Date(c.created_at).toLocaleString()}</span>
+                    {c.request_type && (
+                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-500">
+                        {REQUEST_TYPE_LABELS[c.request_type] || c.request_type}
+                      </span>
+                    )}
+                  </div>
                   <div>{c.text}</div>
                 </div>
               ))}
             </div>
-            <form onSubmit={handleAddComment} className="flex gap-2">
+            <form onSubmit={handleAddComment} className="flex flex-col sm:flex-row gap-2">
               <input value={comment} onChange={e => setComment(e.target.value)} placeholder="Ajouter un commentaire..."
                 className="flex-1 bg-bg border border-border rounded p-2 text-sm text-text" />
+              {isSupplier && (
+                <select value={requestType} onChange={e => setRequestType(e.target.value as CommentRequestType)}
+                  className="bg-bg border border-border rounded p-2 text-sm text-text">
+                  <option value="">Commentaire simple</option>
+                  <option value="QUESTION">❓ Poser une question</option>
+                  <option value="TEST_REQUEST">🧪 Demander un essai</option>
+                  <option value="PHOTO_REQUEST">📷 Demander des photos</option>
+                </select>
+              )}
               <button type="submit" className="bg-panel-2 hover:bg-panel-2/70 border border-border text-text px-4 py-2 rounded text-sm">
                 Envoyer
               </button>

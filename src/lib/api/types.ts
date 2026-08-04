@@ -300,6 +300,7 @@ export type TicketAttachmentCategory =
 export interface TicketAttachment {
   id: number;
   ticket: number;
+  solution?: number | null;
   file: string;
   category: TicketAttachmentCategory;
   uploaded_by?: number;
@@ -307,12 +308,15 @@ export interface TicketAttachment {
   uploaded_at: string;
 }
 
+export type CommentRequestType = 'QUESTION' | 'TEST_REQUEST' | 'PHOTO_REQUEST' | '';
+
 export interface TicketComment {
   id: number;
   ticket: number;
   user: number;
   user_name?: string;
   text: string;
+  request_type?: CommentRequestType;
   created_at: string;
 }
 
@@ -341,12 +345,14 @@ export interface SupplierSolution {
   proposed_by?: number;
   proposed_by_name?: string;
   proposed_at: string;
+  attachments?: TicketAttachment[];
 }
 
 export interface TicketClosure {
   id: number;
   ticket: number;
   repair_conforms: boolean;
+  machine_back_in_service: boolean;
   restarted_at?: string;
   total_downtime_min: number;
   intervention_duration_min?: number;
@@ -400,6 +406,16 @@ export interface SupportKPIBySupplier {
   total_cost: number | null;
 }
 
+export interface SupportKPIIntervention {
+  ticket_number: string;
+  machine_code: string;
+  supplier_name: string | null;
+  closed_at: string;
+  total_downtime_min: number;
+  parts_replaced: string;
+  intervention_cost: number | string | null;
+}
+
 export interface SupportKPIs {
   window_days: number;
   ticket_count: number;
@@ -409,6 +425,19 @@ export interface SupportKPIs {
   total_intervention_cost: number | null;
   by_machine: SupportKPIByMachine[];
   by_supplier: SupportKPIBySupplier[];
+  interventions: SupportKPIIntervention[];
+}
+
+// ──────────────────────────── Notifications ────────────────────────────
+export interface Notification {
+  id: number;
+  verb: string;
+  body: string;
+  target_type: string;
+  target_id: number | null;
+  url: string;
+  is_read: boolean;
+  created_at: string;
 }
 
 // ──────────────────────────── Pagination ────────────────────────────

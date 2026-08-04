@@ -12,6 +12,7 @@ import {
   Shield,
   History,
   LifeBuoy,
+  HardDrive,
   type LucideIcon,
 } from "lucide-react";
 import { UserRole } from "./rbac";
@@ -33,6 +34,7 @@ export const appRoutes: AppRoute[] = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard, roles: INTERNAL_ROLES },
   { href: "/alerts", label: "Alertes", icon: AlertCircle, roles: ["ADMIN", "MANAGER", "CONTROLLER"], badge: "alerts" },
   { href: "/support", label: "Support / SAV", icon: LifeBuoy, roles: ["ADMIN", "MANAGER", "OPERATOR", "SUPPLIER"] },
+  { href: "/support/equipment", label: "Mes équipements", icon: HardDrive, roles: ["SUPPLIER"] },
   { href: "/machines", label: "Machines", icon: Server, roles: ["ADMIN", "MANAGER", "OPERATOR", "CONTROLLER"] },
   { href: "/production", label: "Saisie", icon: Activity, roles: ["ADMIN", "MANAGER", "OPERATOR"] },
   { href: "/oee", label: "TRS / OEE", icon: BarChart3, roles: ["ADMIN", "MANAGER", "OPERATOR"] },

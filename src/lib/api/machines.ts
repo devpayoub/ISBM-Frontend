@@ -5,6 +5,8 @@ export const machinesApi = {
   getMachines: () => fetchClient<PaginatedResponse<Machine>>('/api/v1/machines'),
   
   getMachineDetails: (id: number) => fetchClient<Machine>(`/api/v1/machines/${id}`),
+
+  getMine: () => fetchClient<Machine[]>('/api/v1/machines/mine'),
   
   createMachine: (data: Partial<Machine>) => fetchClient<Machine>('/api/v1/machines', {
     method: 'POST',

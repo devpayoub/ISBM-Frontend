@@ -6,6 +6,17 @@ export type UserRole =
   | 'OPERATOR'
   | 'SUPPLIER';
 
+// Kept in sync with Backend/apps/accounts/models.py's Role.choices — MANAGER
+// is the spec's "Chef d'équipe" (team lead), not a separate role.
+export const ROLE_LABELS: Record<UserRole, string> = {
+  ADMIN: 'Administrateur',
+  MANAGER: "Chef d'équipe",
+  CONTROLLER: 'Contrôleur',
+  MAINTENANCE: 'Maintenance',
+  OPERATOR: 'Opérateur',
+  SUPPLIER: 'Fournisseur',
+};
+
 type Action =
   | 'declare_alert'
   | 'acknowledge_alert'

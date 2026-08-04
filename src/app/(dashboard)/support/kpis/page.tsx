@@ -43,11 +43,12 @@ export default function SupportKPIsPage() {
         </select>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <StatTile label="Tickets clôturés" value={kpis.ticket_count} />
         <StatTile label="Temps moyen de réponse fournisseur" value={kpis.avg_supplier_response_min != null ? `${kpis.avg_supplier_response_min} min` : '—'} />
         <StatTile label="Temps moyen de résolution" value={kpis.avg_resolution_min != null ? `${kpis.avg_resolution_min} min` : '—'} />
         <StatTile label="Coût moyen d'intervention" value={kpis.avg_intervention_cost != null ? kpis.avg_intervention_cost : '—'} />
+        <StatTile label="Coût total d'intervention" value={kpis.total_intervention_cost != null ? kpis.total_intervention_cost : '—'} />
       </div>
 
       <div className="bg-panel border border-border rounded-md p-4">
@@ -102,6 +103,41 @@ export default function SupportKPIsPage() {
               ))}
               {kpis.by_supplier.length === 0 && (
                 <tr><td colSpan={4} className="py-4 text-center text-sm text-text-dim">Aucune donnée pour cette période.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="bg-panel border border-border rounded-md p-4">
+        <h2 className="font-heading font-bold text-lg text-text mb-3">Historique des interventions</h2>
+        <div className="overflow-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-border text-xs uppercase tracking-wider text-text-dim">
+                <th className="pb-2 pr-4 font-semibold">Ticket</th>
+                <th className="pb-2 pr-4 font-semibold">Machine</th>
+                <th className="pb-2 pr-4 font-semibold">Fournisseur</th>
+                <th className="pb-2 pr-4 font-semibold">Clôturé le</th>
+                <th className="pb-2 pr-4 font-semibold">Arrêt</th>
+                <th className="pb-2 pr-4 font-semibold">Pièces remplacées</th>
+                <th className="pb-2 font-semibold">Coût</th>
+              </tr>
+            </thead>
+            <tbody>
+              {kpis.interventions.map(row => (
+                <tr key={row.ticket_number} className="border-b border-border/50">
+                  <td className="py-2 pr-4 text-sm font-mono">{row.ticket_number}</td>
+                  <td className="py-2 pr-4 text-sm">{row.machine_code}</td>
+                  <td className="py-2 pr-4 text-sm">{row.supplier_name || '—'}</td>
+                  <td className="py-2 pr-4 text-xs font-mono text-text-dim">{new Date(row.closed_at).toLocaleString()}</td>
+                  <td className="py-2 pr-4 text-sm font-mono">{row.total_downtime_min} min</td>
+                  <td className="py-2 pr-4 text-sm">{row.parts_replaced || '—'}</td>
+                  <td className="py-2 text-sm font-mono">{row.intervention_cost ?? '—'}</td>
+                </tr>
+              ))}
+              {kpis.interventions.length === 0 && (
+                <tr><td colSpan={7} className="py-4 text-center text-sm text-text-dim">Aucune donnée pour cette période.</td></tr>
               )}
             </tbody>
           </table>

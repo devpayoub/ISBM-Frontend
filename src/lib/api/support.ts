@@ -1,7 +1,7 @@
 import { fetchClient } from './client';
 import { useAuthStore } from '@/lib/store/useAuthStore';
 import {
-  PaginatedResponse, SupplierSolution, SupportKPIs, Ticket, TicketAttachment,
+  CommentRequestType, PaginatedResponse, SupplierSolution, SupportKPIs, Ticket, TicketAttachment,
   TicketAttachmentCategory, TicketComment, TicketValidationDecision,
 } from './types';
 
@@ -39,7 +39,7 @@ export const supportApi = {
     }),
 
   close: (id: number, data: {
-    repair_conforms?: boolean; restarted_at?: string;
+    repair_conforms?: boolean; machine_back_in_service?: boolean; restarted_at?: string;
     intervention_duration_min?: number; parts_replaced?: string;
     intervention_cost?: number;
   }) => fetchClient<Ticket>(`/api/v1/support/tickets/${id}/close`, {
@@ -47,15 +47,16 @@ export const supportApi = {
     body: JSON.stringify(data),
   }),
 
-  addComment: (id: number, text: string) => fetchClient<TicketComment>(`/api/v1/support/tickets/${id}/add_comment`, {
+  addComment: (id: number, text: string, requestType?: CommentRequestType) => fetchClient<TicketComment>(`/api/v1/support/tickets/${id}/add_comment`, {
     method: 'POST',
-    body: JSON.stringify({ text }),
+    body: JSON.stringify({ text, request_type: requestType || '' }),
   }),
 
-  addAttachment: (id: number, file: File, category: TicketAttachmentCategory) => {
+  addAttachment: (id: number, file: File, category: TicketAttachmentCategory, solutionId?: number) => {
     const form = new FormData();
     form.append('file', file);
     form.append('category', category);
+    if (solutionId) form.append('solution', String(solutionId));
     return fetchClient<TicketAttachment>(`/api/v1/support/tickets/${id}/add_attachment`, {
       method: 'POST',
       body: form,
