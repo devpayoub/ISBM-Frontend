@@ -4,19 +4,29 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { machinesApi } from '@/lib/api/machines';
-import { Machine, MachineType, PaginatedResponse } from '@/lib/api/types';
+import { productionApi } from '@/lib/api/production';
+import { alertsApi } from '@/lib/api/alerts';
+import { Machine, MachineStatus, MachineType, PaginatedResponse } from '@/lib/api/types';
 import { useAlertStore } from '@/lib/store/useAlertStore';
 import { useAuthStore } from '@/lib/store/useAuthStore';
 import { errorMessage, parseFieldErrors } from '@/lib/api/errors';
 import { Input } from '@/components/ui/input';
+import { connectWebSocket, disconnectWebSocket } from '@/lib/ws/client';
 
 const MACHINE_TYPES: MachineType[] = ['ISBM', 'INJECTION', 'COMPRESSOR', 'CHILLER', 'DRYER'];
+// Utility equipment (compressor/chiller/dryer) doesn't produce bottles — the
+// pace bar and today's-output stat only make sense for lines that do.
+const PRODUCTION_TYPES: MachineType[] = ['ISBM', 'INJECTION'];
+const STATUS_OPTIONS: MachineStatus[] = ['RUNNING', 'STOPPED', 'MAINTENANCE', 'BREAKDOWN'];
 
 export default function MachinesPage() {
   const [data, setData] = useState<PaginatedResponse<Machine> | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [perMachineToday, setPerMachineToday] = useState<Record<string, number>>({});
+  const [statusUpdating, setStatusUpdating] = useState<number | null>(null);
   const machineStatus = useAlertStore((state) => state.machineStatus);
+  const liveAlerts = useAlertStore((state) => state.liveAlerts);
   const user = useAuthStore((state) => state.user);
   const canManage = user?.role === 'ADMIN' || user?.role === 'MANAGER';
 
@@ -33,9 +43,48 @@ export default function MachinesPage() {
 
   useEffect(() => {
     machinesApi.getMachines().then(setData).catch(console.error);
+    productionApi.getDailySummary(new Date().toISOString().split('T')[0])
+      .then((res) => setPerMachineToday(res.per_machine || {})).catch(console.error);
+    // Andon dots + the alert overlay below need live data. useAlertStore is
+    // only ever seeded by whichever page happens to fetch it first (today
+    // that's the Dashboard) — landing here directly leaves it empty, so
+    // fetch + connect the same way Dashboard does rather than assuming
+    // another page already primed the store.
+    alertsApi.getActiveAlerts().then(useAlertStore.getState().setInitialAlerts).catch(console.error);
+    connectWebSocket();
+    return () => disconnectWebSocket();
   }, []);
 
   const refresh = () => machinesApi.getMachines().then(setData).catch(console.error);
+
+  const handleStatusChange = async (machine: Machine, status: MachineStatus) => {
+    setStatusUpdating(machine.id);
+    try {
+      await machinesApi.updateStatus(machine.id, status);
+      await refresh();
+      toast.success(`${machine.name} → ${status}`);
+    } catch (err) {
+      toast.error(errorMessage(err, 'Échec du changement de statut.'));
+    } finally {
+      setStatusUpdating(null);
+    }
+  };
+
+  // "Current BPH vs nominal" as an honest, always-available number: today's
+  // cumulative output vs. what nominal rate would have produced by now —
+  // there's no live instantaneous-rate feed, so pace-so-far is the closest
+  // truthful stand-in (matches Plan_Frontend's "animated bar" intent without
+  // inventing a metric the backend doesn't actually compute).
+  const getPace = (machine: Machine) => {
+    const nominal = machine.type === 'INJECTION' ? machine.nominal_cph : machine.nominal_bph;
+    const today = perMachineToday[machine.code] || 0;
+    const now = new Date();
+    const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const hoursElapsed = Math.max((now.getTime() - midnight.getTime()) / 3600000, 1 / 60);
+    const expected = Math.round(nominal * hoursElapsed);
+    const pct = expected > 0 ? Math.min((today / expected) * 100, 100) : 0;
+    return { today, expected, pct };
+  };
 
   const resetForm = () => {
     setName(''); setCode(''); setType('ISBM'); setNominalBph('0'); setNominalCph('0');
@@ -163,22 +212,68 @@ export default function MachinesPage() {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {machinesList.map(machine => (
-          <Link href={`/machines/${machine.id}`} key={machine.id}>
-            <div className="bg-panel border border-border rounded-md p-6 hover:border-cyan-500/50 transition-colors cursor-pointer group">
-              <div className="flex justify-between items-start mb-4">
-                <div>
+        {machinesList.map(machine => {
+          const machineAlerts = liveAlerts.filter((a) => a.machine === machine.id);
+          const topAlert = machineAlerts[0];
+          const canOpenAlert = user?.role === 'ADMIN' || user?.role === 'MANAGER' || user?.role === 'CONTROLLER';
+          const isProduction = PRODUCTION_TYPES.includes(machine.type);
+          const pace = isProduction ? getPace(machine) : null;
+          const paceBarColor = pace && pace.pct >= 90 ? 'bg-green-500' : pace && pace.pct >= 60 ? 'bg-orange-500' : 'bg-red-500';
+
+          return (
+          <div key={machine.id} className={`bg-panel border rounded-md overflow-hidden transition-colors group ${topAlert ? 'border-red-500/50' : 'border-border hover:border-cyan-500/50'}`}>
+            {topAlert && (
+              canOpenAlert ? (
+                <Link href={`/alerts/${topAlert.id}`} className="flex items-center justify-between gap-2 bg-red-500/10 border-b border-red-500/30 px-4 py-2 text-xs hover:bg-red-500/15 transition-colors">
+                  <span className="text-red-400 font-medium truncate">⚠ {topAlert.title}</span>
+                  {machineAlerts.length > 1 && <span className="text-red-400/70 font-mono shrink-0">+{machineAlerts.length - 1}</span>}
+                </Link>
+              ) : (
+                <div className="flex items-center justify-between gap-2 bg-red-500/10 border-b border-red-500/30 px-4 py-2 text-xs">
+                  <span className="text-red-400 font-medium truncate">⚠ {topAlert.title}</span>
+                  {machineAlerts.length > 1 && <span className="text-red-400/70 font-mono shrink-0">+{machineAlerts.length - 1}</span>}
+                </div>
+              )
+            )}
+            <div className="p-6">
+              <div className="mb-4">
+                <Link href={`/machines/${machine.id}`}>
                   <h2 className="font-heading font-bold text-xl group-hover:text-cyan-400 transition-colors">{machine.name}</h2>
                   <span className="font-mono text-xs text-text-dim">{machine.code}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className={`w-4 h-4 rounded-full ${getAndonDot(machine)}`} />
-                  <span className={`text-[10px] font-mono px-2 py-0.5 rounded ${getStatusBadge(machine.status)}`}>
-                    {machine.status}
-                  </span>
+                </Link>
+                <div className="flex items-center gap-2 mt-2">
+                  <div className={`w-3 h-3 rounded-full shrink-0 ${getAndonDot(machine)}`} />
+                  {canManage ? (
+                    <select
+                      value={machine.status}
+                      disabled={statusUpdating === machine.id}
+                      onChange={(e) => handleStatusChange(machine, e.target.value as MachineStatus)}
+                      onClick={(e) => e.stopPropagation()}
+                      className={`text-[10px] font-mono px-1.5 py-0.5 rounded border-0 focus:outline-none focus:ring-1 focus:ring-cyan-500 disabled:opacity-50 ${getStatusBadge(machine.status)}`}
+                    >
+                      {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  ) : (
+                    <span className={`text-[10px] font-mono px-2 py-0.5 rounded ${getStatusBadge(machine.status)}`}>
+                      {machine.status}
+                    </span>
+                  )}
                 </div>
               </div>
-              <div className="space-y-2 text-sm text-text-dim">
+
+              {pace && (
+                <div className="mb-4">
+                  <div className="flex justify-between items-baseline mb-1">
+                    <span className="text-xs text-text-dim">Production du jour</span>
+                    <span className="font-mono text-sm text-text">{pace.today} / {pace.expected} <span className="text-text-dim">attendu</span></span>
+                  </div>
+                  <div className="w-full h-2 bg-bg rounded-full overflow-hidden">
+                    <div className={`h-full rounded-full transition-all duration-1000 ${paceBarColor}`} style={{ width: `${pace.pct}%` }} />
+                  </div>
+                </div>
+              )}
+
+              <Link href={`/machines/${machine.id}`} className="block space-y-2 text-sm text-text-dim">
                 <div className="flex justify-between">
                   <span>Type</span>
                   <span className="font-mono text-text">{machine.type}</span>
@@ -201,10 +296,11 @@ export default function MachinesPage() {
                     <span className="font-mono text-text">{machine.product_format}</span>
                   </div>
                 )}
-              </div>
+              </Link>
             </div>
-          </Link>
-        ))}
+          </div>
+          );
+        })}
       </div>
     </div>
   );

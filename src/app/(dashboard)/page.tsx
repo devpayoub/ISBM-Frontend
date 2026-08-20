@@ -7,12 +7,19 @@ import { useAuthStore } from '@/lib/store/useAuthStore';
 import { useAlertStore } from '@/lib/store/useAlertStore';
 import { AndonBoard } from '@/components/dashboard/AndonBoard';
 import { AlertFeed } from '@/components/dashboard/AlertFeed';
+import { StockSummary } from '@/components/dashboard/StockSummary';
+import { PlanningSummary } from '@/components/dashboard/PlanningSummary';
 import { AlertDeclareDialog } from '@/components/alerts/AlertDeclareDialog';
 import { connectWebSocket, disconnectWebSocket } from '@/lib/ws/client';
 
 export default function DashboardPage() {
   const [kpis, setKpis] = useState<any>(null);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const role = useAuthStore((s) => s.user?.role);
+  // Same visibility as the sidebar links (lib/auth/routes.ts) — don't show a
+  // dashboard card for a page the role can't open.
+  const canSeeStock = role === 'ADMIN' || role === 'MANAGER';
+  const canSeePlanning = role === 'ADMIN' || role === 'MANAGER' || role === 'OPERATOR';
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -59,11 +66,18 @@ export default function DashboardPage() {
         <div className="flex flex-col min-h-0">
           <AndonBoard />
         </div>
-        
+
         <div className="flex flex-col min-h-0">
           <AlertFeed />
         </div>
       </div>
+
+      {(canSeeStock || canSeePlanning) && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {canSeeStock && <StockSummary />}
+          {canSeePlanning && <PlanningSummary />}
+        </div>
+      )}
     </div>
   );
 }

@@ -1,5 +1,8 @@
 import { fetchClient } from './client';
-import { Intervention, PreventiveMaintenance, PaginatedResponse } from './types';
+import {
+  ChecklistTemplate, ControlResultStatus, Intervention, MaintenanceControl,
+  PreventiveMaintenance, PaginatedResponse,
+} from './types';
 
 export const maintenanceApi = {
   // Interventions
@@ -48,4 +51,31 @@ export const maintenanceApi = {
     }),
 
   getDuePreventive: () => fetchClient<PreventiveMaintenance[]>('/api/v1/maintenance/preventive/due'),
+
+  // Controller Control page (preventive maintenance checklists)
+  getChecklistTemplates: () => fetchClient<PaginatedResponse<ChecklistTemplate>>('/api/v1/maintenance/checklist-templates'),
+
+  getControls: (params?: Record<string, string>) => {
+    const qs = params ? new URLSearchParams(params).toString() : '';
+    return fetchClient<PaginatedResponse<MaintenanceControl>>(`/api/v1/maintenance/controls${qs ? `?${qs}` : ''}`);
+  },
+
+  getControl: (id: number) => fetchClient<MaintenanceControl>(`/api/v1/maintenance/controls/${id}`),
+
+  startControl: (data: { machine?: number; equipment?: number; date: string; shift: string }) =>
+    fetchClient<MaintenanceControl>('/api/v1/maintenance/controls/start', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  submitControlResults: (id: number, results: { item: number; status: ControlResultStatus; note?: string }[]) =>
+    fetchClient<MaintenanceControl>(`/api/v1/maintenance/controls/${id}/results`, {
+      method: 'PATCH',
+      body: JSON.stringify({ results }),
+    }),
+
+  confirmControl: (id: number) =>
+    fetchClient<MaintenanceControl>(`/api/v1/maintenance/controls/${id}/confirm`, {
+      method: 'PATCH',
+    }),
 };

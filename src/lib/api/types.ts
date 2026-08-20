@@ -16,6 +16,7 @@ export interface User {
   email: string;
   first_name: string;
   last_name: string;
+  full_name?: string;
   phone?: string;
   role: Role;
   shift?: Shift;
@@ -49,10 +50,58 @@ export interface Parameter {
   key: string;
   label: string;
   value: string;
+  text_value?: string;
   unit: string;
   category: string;
   effective_from?: string;
   is_active: boolean;
+}
+
+export interface MachineComponent {
+  id: number;
+  machine: number;
+  machine_code?: string;
+  name: string;
+  reference?: string;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface AuxiliaryEquipment {
+  id: number;
+  name: string;
+  reference?: string;
+  machines: number[];
+  machines_detail?: { id: number; code: string; name: string }[];
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface Mold {
+  id: number;
+  machine: number;
+  machine_code?: string;
+  name: string;
+  reference?: string;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// ──────────────────────────── RH / Shifts ────────────────────────────
+export interface ShiftAssignment {
+  id: number;
+  user: number;
+  user_name?: string;
+  user_role?: string;
+  machine?: number | null;
+  machine_code?: string;
+  shift: Shift;
+  starts_at: string;
+  ends_at?: string | null;
+  created_at?: string;
 }
 
 // ──────────────────────────── Alerts ────────────────────────────
@@ -140,6 +189,179 @@ export interface PreventiveMaintenance {
   status: PmStatus;
 }
 
+// ──────────────────────────── Controller Control (preventive maintenance) ────────────────────────────
+export type ControlResultStatus = 'PENDING' | 'OK' | 'PROBLEM';
+
+export interface ChecklistItem {
+  id: number;
+  text: string;
+  order: number;
+}
+
+export interface ChecklistSection {
+  id: number;
+  name: string;
+  order: number;
+  items: ChecklistItem[];
+}
+
+export interface ChecklistTemplate {
+  id: number;
+  key: string;
+  name: string;
+  is_active: boolean;
+  sections: ChecklistSection[];
+}
+
+export interface MaintenanceControlResult {
+  id: number;
+  item: number;
+  item_text: string;
+  section_name: string;
+  status: ControlResultStatus;
+  note: string;
+}
+
+export interface MaintenanceControl {
+  id: number;
+  template: number;
+  template_name: string;
+  machine: number | null;
+  machine_code: string;
+  equipment: number | null;
+  equipment_name: string;
+  target_label: string;
+  date: string;
+  shift: Shift;
+  controller: number | null;
+  controller_name: string;
+  confirmed_at: string | null;
+  confirmed_by: number | null;
+  confirmed_by_name: string;
+  is_locked: boolean;
+  created_at: string;
+  updated_at: string;
+  results: MaintenanceControlResult[];
+}
+
+// ──────────────────────────── Stock ────────────────────────────
+export type StockItemType = 'RAW_MATERIAL' | 'COLORANT';
+export type StockStatus = 'IN_STOCK' | 'LOW' | 'RUPTURE';
+export type StockMovementType = 'RECEIPT' | 'CONSUMPTION' | 'ADJUSTMENT';
+
+export interface StockMovement {
+  id: number;
+  stock_item: number;
+  type: StockMovementType;
+  delta: string;
+  quantity_before: string;
+  quantity_after: string;
+  reason: string;
+  created_by: number | null;
+  created_by_name: string;
+  created_at: string;
+}
+
+export interface StockItem {
+  id: number;
+  type: StockItemType;
+  name: string;
+  reference: string;
+  supplier: string;
+  ral: string;
+  unit: string;
+  quantity: string;
+  min_threshold: string;
+  batch: string;
+  received_at: string | null;
+  notes: string;
+  is_active: boolean;
+  status: StockStatus;
+  created_by: number | null;
+  created_by_name: string;
+  movements: StockMovement[];
+  created_at: string;
+  updated_at: string;
+}
+
+// ──────────────────────────── Reclamation ────────────────────────────
+export type ReclamationStatus = 'OPEN' | 'INVESTIGATING' | 'CORRECTED' | 'CLOSED';
+export type ReclamationSeverity = 'CRITICAL' | 'MAJOR' | 'MINOR';
+
+export interface ResolvedPersonnelEntry {
+  id: number;
+  name: string;
+}
+
+export interface ResolvedPersonnel {
+  date?: string;
+  hour_label?: string;
+  shift?: string;
+  machine?: string;
+  maintenance?: ResolvedPersonnelEntry[];
+  controller?: ResolvedPersonnelEntry[];
+  production?: ResolvedPersonnelEntry[];
+}
+
+export interface ReclamationAttachment {
+  id: number;
+  reclamation: number;
+  file: string;
+  uploaded_by: number | null;
+  uploaded_by_name: string;
+  uploaded_at: string;
+}
+
+export interface Reclamation {
+  id: number;
+  reference: string;
+  client: string;
+  reported_at: string;
+  description: string;
+  stock_item: number | null;
+  stock_item_name: string;
+  stock_item_reference: string;
+  product_reference: string;
+  machine: number | null;
+  machine_code: string;
+  production_at: string | null;
+  severity: ReclamationSeverity;
+  status: ReclamationStatus;
+  resolved_personnel: ResolvedPersonnel;
+  resolution: string;
+  created_by: number | null;
+  created_by_name: string;
+  closed_by: number | null;
+  closed_by_name: string;
+  closed_at: string | null;
+  attachments: ReclamationAttachment[];
+  created_at: string;
+  updated_at: string;
+}
+
+// ──────────────────────────── Catalog (Bottle characteristics) ────────────────────────────
+export type BouchantType = 'HDPE' | 'LDPE' | 'COLORANT';
+
+export interface BottleCharacteristic {
+  id: number;
+  category: string;
+  reference: string;
+  raw_material: number;
+  raw_material_name: string;
+  raw_material_reference: string;
+  raw_material_qty_g: string;
+  colorant: number | null;
+  colorant_name: string;
+  colorant_reference: string;
+  colorant_qty_g: string;
+  bouchant_type: BouchantType;
+  bouchant_raw_material_qty_g: string;
+  bouchant_colorant_qty_g: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 // ──────────────────────────── Production ────────────────────────────
 export interface ProductionEntry {
   id: number;
@@ -213,6 +435,63 @@ export interface ProductionPlan {
   variance: number;
   variance_pct: number;
   notes?: string;
+}
+
+export type PlanningOrderStatus = 'QUEUED' | 'IN_PROGRESS' | 'DONE' | 'CANCELLED';
+
+export interface PlanningOrder {
+  id: number;
+  machine: number;
+  machine_code: string;
+  mold: number | null;
+  mold_name: string;
+  mold_reference: string;
+  bottle: number | null;
+  bottle_category: string;
+  product_reference: string;
+  color: string;
+  color_formulation: string;
+  quantity: number;
+  time_per_bottle_sec: string;
+  mold_change_min: number;
+  priority: number;
+  requested_start: string | null;
+  status: PlanningOrderStatus;
+  notes: string;
+  created_by: number | null;
+  created_by_name: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MaterialCheck {
+  bottle: number;
+  bottle_category: string;
+  raw_material_reference: string;
+  raw_material_required_kg: string;
+  raw_material_available_kg: string;
+  colorant_reference: string;
+  colorant_required_kg: string | null;
+  colorant_available_kg: string | null;
+  stock_sufficient: boolean;
+}
+
+export interface ScheduledOrder {
+  id: number;
+  machine: number;
+  machine_code: string;
+  mold: number | null;
+  mold_name: string;
+  product_reference: string;
+  color: string;
+  quantity: number;
+  priority: number;
+  mold_change_min: number;
+  production_time_min: number;
+  estimated_start: string;
+  estimated_finish: string;
+  total_duration_min: number;
+  material_check: MaterialCheck | null;
 }
 
 // ──────────────────────────── ISO 9001 / Quality ────────────────────────────
@@ -438,6 +717,61 @@ export interface Notification {
   url: string;
   is_read: boolean;
   created_at: string;
+}
+
+// ──────────────────────────── Package / Bag traceability ────────────────────────────
+export interface PersonnelSnapshotEntry {
+  id: number;
+  name: string;
+  role: string;
+}
+
+export interface Package {
+  id: number;
+  reference: string;
+  machine: number;
+  machine_code: string;
+  machine_name: string;
+  bottle: number | null;
+  bottle_category: string;
+  bottle_count: number;
+  raw_material: number | null;
+  raw_material_name: string;
+  raw_material_reference_snapshot: string;
+  raw_material_consumed_kg: string | null;
+  color: number | null;
+  color_name: string;
+  color_reference_snapshot: string;
+  colorant_consumed_kg: string | null;
+  supplier: string;
+  production_started_at: string;
+  production_finished_at: string | null;
+  personnel_snapshot: PersonnelSnapshotEntry[];
+  notes: string;
+  shipped_at: string | null;
+  shipped_to: string;
+  created_by: number | null;
+  created_by_name: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PackageSummary {
+  bags_total: number;
+  bags_shipped: number;
+  bottles_made: number;
+  bottles_shipped: number;
+  bottles_on_hand: number;
+}
+
+export interface BottleCapacity {
+  id: number;
+  category: string;
+  raw_material_reference: string;
+  raw_material_available_kg: string;
+  colorant_reference: string;
+  colorant_available_kg: string | null;
+  max_producible: number;
 }
 
 // ──────────────────────────── Pagination ────────────────────────────
