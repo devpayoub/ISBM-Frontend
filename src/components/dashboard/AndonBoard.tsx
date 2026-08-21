@@ -23,9 +23,9 @@ export function AndonBoard() {
   };
 
   return (
-    <div className="bg-panel border border-border rounded-md p-4 flex flex-col h-full">
+    <div className="bg-panel border border-border rounded-md p-4 flex flex-col h-[420px]">
       <h2 className="text-sm font-semibold text-text-dim tracking-wider uppercase mb-4">Andon Board</h2>
-      <div className="flex-1 flex flex-col gap-4 justify-center overflow-y-auto">
+      <div className="flex-1 flex flex-col gap-4 overflow-y-auto">
         {machines.length === 0 ? (
           <div className="text-sm text-text-dim text-center py-8">Aucune machine.</div>
         ) : (

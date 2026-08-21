@@ -22,7 +22,7 @@ export function AlertFeed() {
   };
 
   return (
-    <div className="bg-panel border border-border rounded-md p-4 flex flex-col h-full">
+    <div className="bg-panel border border-border rounded-md p-4 flex flex-col h-[420px]">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-sm font-semibold text-text-dim tracking-wider uppercase">Alert Feed</h2>
         <span className="text-xs bg-red-500/10 text-red-500 px-2 py-1 rounded font-mono">

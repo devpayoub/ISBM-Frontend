@@ -38,12 +38,12 @@ export default function DashboardPage() {
   }, [isAuthenticated]);
 
   return (
-    <div className="p-6 flex flex-col h-full gap-6">
+    <div className="p-6 flex flex-col gap-6">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
         <h1 className="font-heading font-bold text-2xl uppercase tracking-wide text-text">Vue D'ensemble</h1>
         <AlertDeclareDialog />
       </div>
-      
+
       {/* KPI Strip */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         {[
@@ -62,14 +62,14 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 min-h-0">
-        <div className="flex flex-col min-h-0">
-          <AndonBoard />
-        </div>
-
-        <div className="flex flex-col min-h-0">
-          <AlertFeed />
-        </div>
+      {/* Andon Board + Alert Feed have their own fixed height (not
+          flex-1-fill-remaining) so they render the same on every window
+          size — a "fill whatever's left" height fought with the KPI strip
+          and Stock/Planning rows below for space and could collapse to
+          near-zero on a short or resized window. */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <AndonBoard />
+        <AlertFeed />
       </div>
 
       {(canSeeStock || canSeePlanning) && (
