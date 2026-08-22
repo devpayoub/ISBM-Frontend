@@ -794,6 +794,44 @@ export interface BottleCapacity {
   colorant_reference: string;
   colorant_available_kg: string | null;
   max_producible: number;
+  physical_capacity: number;
+  limiting_component: string;
+  limiting_component_name: string;
+}
+
+export interface MaterialsOverview {
+  stock: {
+    total_active_items: number;
+    near_threshold_count: number;
+    near_threshold: {
+      id: number;
+      reference: string;
+      name: string;
+      quantity: string;
+      unit: string;
+      status: 'IN_STOCK' | 'LOW' | 'RUPTURE';
+    }[];
+  };
+  capacity: {
+    id: number;
+    category: string;
+    physical_capacity: number;
+    available_capacity: number;
+    limiting_component: string;
+    limiting_component_name: string;
+  }[];
+  orders: {
+    queued: number;
+    in_progress: number;
+    stock_ok: number;
+    stock_warning: number;
+    stock_insufficient: number;
+  };
+  production: {
+    planned_quantity: number;
+    actual_quantity: number;
+    completion_pct: number;
+  };
 }
 
 // ──────────────────────────── Pagination ────────────────────────────

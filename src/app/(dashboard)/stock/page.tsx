@@ -160,6 +160,12 @@ export default function StockPage() {
                 <div className="font-heading font-bold text-text">{c.category}</div>
                 <div className="font-mono text-3xl font-bold mt-2 text-cyan-500">{c.max_producible}</div>
                 <div className="text-xs text-text-dim">bouteilles restantes possibles</div>
+                {c.physical_capacity > c.max_producible && (
+                  <div className="text-[10px] text-text-dim mt-0.5">{c.physical_capacity} sans réservations d'autres commandes</div>
+                )}
+                {c.limiting_component && (
+                  <div className="text-[10px] text-yellow-500 mt-0.5">limité par {c.limiting_component_name} ({c.limiting_component})</div>
+                )}
                 <div className="text-xs text-text-dim mt-2 space-y-0.5">
                   <div>MP {c.raw_material_reference}: {c.raw_material_available_kg} kg</div>
                   {c.colorant_reference && <div>Col {c.colorant_reference}: {c.colorant_available_kg} kg</div>}

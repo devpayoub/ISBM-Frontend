@@ -9,6 +9,7 @@ import { AndonBoard } from '@/components/dashboard/AndonBoard';
 import { AlertFeed } from '@/components/dashboard/AlertFeed';
 import { StockSummary } from '@/components/dashboard/StockSummary';
 import { PlanningSummary } from '@/components/dashboard/PlanningSummary';
+import { MaterialsOverview } from '@/components/dashboard/MaterialsOverview';
 import { AlertDeclareDialog } from '@/components/alerts/AlertDeclareDialog';
 import { connectWebSocket, disconnectWebSocket } from '@/lib/ws/client';
 
@@ -76,6 +77,12 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {canSeeStock && <StockSummary />}
           {canSeePlanning && <PlanningSummary />}
+        </div>
+      )}
+
+      {canSeeStock && (
+        <div className="grid grid-cols-1 gap-6">
+          <MaterialsOverview />
         </div>
       )}
     </div>
