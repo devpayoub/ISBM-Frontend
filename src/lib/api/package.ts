@@ -1,5 +1,5 @@
 import { fetchClient } from './client';
-import { Package, PackageSummary, PaginatedResponse, PersonnelSnapshotEntry } from './types';
+import { Package, PackageOrderProgress, PackageSummary, PaginatedResponse, PersonnelSnapshotEntry } from './types';
 
 export const packageApi = {
   getPackages: (params?: Record<string, string>) => {
@@ -12,9 +12,15 @@ export const packageApi = {
     return fetchClient<PackageSummary>(`/api/v1/package/packages/summary${qs ? `?${qs}` : ''}`);
   },
 
+  getOrderProgress: () => fetchClient<PackageOrderProgress[]>('/api/v1/package/packages/order-progress'),
+
   ship: (id: number, shippedTo: string) => fetchClient<Package>(`/api/v1/package/packages/${id}/ship`, {
     method: 'POST',
     body: JSON.stringify({ shipped_to: shippedTo }),
+  }),
+
+  verify: (id: number) => fetchClient<Package>(`/api/v1/package/packages/${id}/verify`, {
+    method: 'POST',
   }),
 
   createPackage: (data: Partial<Package>) => fetchClient<Package>('/api/v1/package/packages', {

@@ -7,12 +7,16 @@ import { stockApi } from '@/lib/api/stock';
 import { machinesApi } from '@/lib/api/machines';
 import { catalogApi } from '@/lib/api/catalog';
 import { planningApi } from '@/lib/api/planning';
-import { Package, PackageSummary, PersonnelSnapshotEntry, StockItem, Machine, BottleCharacteristic, PlanningOrder } from '@/lib/api/types';
+import { Package, PackageOrderProgress, PackageSummary, PersonnelSnapshotEntry, StockItem, Machine, BottleCharacteristic, PlanningOrder } from '@/lib/api/types';
 import { errorMessage, parseFieldErrors } from '@/lib/api/errors';
 import { Input } from '@/components/ui/input';
 import { ROLE_LABELS, UserRole } from '@/lib/auth/rbac';
+import { useAuthStore } from '@/lib/store/useAuthStore';
 
 export default function PackagePage() {
+  const role = useAuthStore((s) => s.user?.role);
+  const canManage = role === 'ADMIN' || role === 'MANAGER';
+  const [tab, setTab] = useState<'sacs' | 'suivi'>(canManage ? 'sacs' : 'suivi');
   const [packages, setPackages] = useState<Package[]>([]);
   const [search, setSearch] = useState('');
   const [dateFilter, setDateFilter] = useState('');
@@ -56,74 +60,185 @@ export default function PackagePage() {
     <div className="p-6 space-y-6">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
         <h1 className="font-heading font-bold text-2xl uppercase tracking-wide text-text">Package / Traçabilité des sacs</h1>
-        <button onClick={() => { setSelected(null); setCreating(true); }} className="bg-cyan-500 hover:bg-cyan-600 text-white px-4 py-2 rounded text-sm font-medium transition-colors whitespace-nowrap">
-          + Nouveau sac
+        {canManage && (
+          <button onClick={() => { setTab('sacs'); setSelected(null); setCreating(true); }} className="bg-cyan-500 hover:bg-cyan-600 text-white px-4 py-2 rounded text-sm font-medium transition-colors whitespace-nowrap">
+            + Nouveau sac
+          </button>
+        )}
+      </div>
+
+      <div className="flex gap-1 bg-bg border border-border rounded-md p-1 w-fit">
+        <button
+          onClick={() => setTab('sacs')}
+          className={`px-4 py-2 rounded text-sm font-medium transition-colors ${tab === 'sacs' ? 'bg-panel text-text shadow' : 'text-text-dim hover:text-text'}`}
+        >
+          Sacs
+        </button>
+        <button
+          onClick={() => setTab('suivi')}
+          className={`px-4 py-2 rounded text-sm font-medium transition-colors ${tab === 'suivi' ? 'bg-panel text-text shadow' : 'text-text-dim hover:text-text'}`}
+        >
+          Suivi par commande
         </button>
       </div>
 
-      {summary && (
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          {[
-            { label: 'Sacs', value: summary.bags_total },
-            { label: 'Bouteilles fabriquées', value: summary.bottles_made },
-            { label: 'Bouteilles expédiées', value: summary.bottles_shipped },
-            { label: 'Bouteilles en stock', value: summary.bottles_on_hand },
-            { label: 'Sacs expédiés', value: summary.bags_shipped },
-          ].map(({ label, value }) => (
-            <div key={label} className="bg-panel border border-border rounded-md p-4">
-              <div className="text-[11px] font-sans font-semibold tracking-widest text-text-dim uppercase">{label}</div>
-              <div className="font-mono text-2xl font-bold mt-2 text-text">{value}</div>
+      {tab === 'suivi' ? (
+        <OrderProgressPanel />
+      ) : (
+        <>
+          {summary && (
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              {[
+                { label: 'Sacs', value: summary.bags_total },
+                { label: 'Bouteilles fabriquées', value: summary.bottles_made },
+                { label: 'Bouteilles expédiées', value: summary.bottles_shipped },
+                { label: 'Bouteilles en stock', value: summary.bottles_on_hand },
+                { label: 'Sacs expédiés', value: summary.bags_shipped },
+              ].map(({ label, value }) => (
+                <div key={label} className="bg-panel border border-border rounded-md p-4">
+                  <div className="text-[11px] font-sans font-semibold tracking-widest text-text-dim uppercase">{label}</div>
+                  <div className="font-mono text-2xl font-bold mt-2 text-text">{value}</div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      )}
+          )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-6 items-start">
-        <div className="space-y-4">
-          <div className="bg-panel border border-border rounded-md p-4 space-y-3">
-            <Input type="text" placeholder="Rechercher (référence, matière, couleur, fournisseur)..." value={search} onChange={(e) => setSearch(e.target.value)} />
-            <select value={machineFilter} onChange={(e) => setMachineFilter(e.target.value)}
-              className="w-full bg-bg border border-border rounded p-2 text-sm text-text focus:outline-none focus:border-cyan-500">
-              <option value="">Toutes les machines</option>
-              {machines.map((m) => <option key={m.id} value={m.id}>{m.name} ({m.code})</option>)}
-            </select>
-            <input type="date" value={dateFilter} onChange={(e) => setDateFilter(e.target.value)}
-              className="w-full bg-bg border border-border rounded p-2 text-sm text-text focus:outline-none focus:border-cyan-500" />
-          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-6 items-start">
+            <div className="space-y-4">
+              <div className="bg-panel border border-border rounded-md p-4 space-y-3">
+                <Input type="text" placeholder="Rechercher (référence, matière, couleur, fournisseur)..." value={search} onChange={(e) => setSearch(e.target.value)} />
+                <select value={machineFilter} onChange={(e) => setMachineFilter(e.target.value)}
+                  className="w-full bg-bg border border-border rounded p-2 text-sm text-text focus:outline-none focus:border-cyan-500">
+                  <option value="">Toutes les machines</option>
+                  {machines.map((m) => <option key={m.id} value={m.id}>{m.name} ({m.code})</option>)}
+                </select>
+                <input type="date" value={dateFilter} onChange={(e) => setDateFilter(e.target.value)}
+                  className="w-full bg-bg border border-border rounded p-2 text-sm text-text focus:outline-none focus:border-cyan-500" />
+              </div>
 
-          <div className="bg-panel border border-border rounded-md p-4">
-            {packages.length === 0 ? (
-              <p className="text-sm text-text-dim">Aucun sac trouvé.</p>
+              <div className="bg-panel border border-border rounded-md p-4">
+                {packages.length === 0 ? (
+                  <p className="text-sm text-text-dim">Aucun sac trouvé.</p>
+                ) : (
+                  <div className="space-y-1 max-h-[600px] overflow-auto">
+                    {packages.map((p) => (
+                      <button key={p.id} onClick={() => { setCreating(false); setSelected(p); }}
+                        className={`w-full text-left p-3 rounded border transition-colors ${
+                          selected?.id === p.id ? 'bg-panel-2 border-cyan-500' : 'border-border/50 hover:bg-panel-2/50'
+                        }`}>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-sm font-medium text-text font-mono">{p.reference}</span>
+                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-400 shrink-0">{p.bottle_count} btl</span>
+                        </div>
+                        <div className="text-xs text-text-dim mt-0.5">{p.machine_code} • {p.supplier || '—'}</div>
+                        <div className="text-[10px] text-text-dim mt-1">{new Date(p.production_started_at).toLocaleString()}</div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {creating ? (
+              <PackageForm stockItems={stockItems} machines={machines} bottles={bottles} orders={orders} onSaved={afterSave} onCancel={() => setCreating(false)} />
+            ) : selected ? (
+              <PackageDetail pkg={selected} onShipped={(p) => { setSelected(p); refresh(); }} onVerified={(p) => { setSelected(p); refresh(); }} />
             ) : (
-              <div className="space-y-1 max-h-[600px] overflow-auto">
-                {packages.map((p) => (
-                  <button key={p.id} onClick={() => { setCreating(false); setSelected(p); }}
-                    className={`w-full text-left p-3 rounded border transition-colors ${
-                      selected?.id === p.id ? 'bg-panel-2 border-cyan-500' : 'border-border/50 hover:bg-panel-2/50'
-                    }`}>
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-sm font-medium text-text font-mono">{p.reference}</span>
-                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-400 shrink-0">{p.bottle_count} btl</span>
+              <div className="bg-panel border border-border rounded-md p-6 flex items-center justify-center min-h-[200px]">
+                <p className="text-sm text-text-dim text-center max-w-sm">Sélectionnez un sac dans la liste, ou créez-en un nouveau.</p>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function OrderProgressPanel() {
+  const [rows, setRows] = useState<PackageOrderProgress[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [verifyingId, setVerifyingId] = useState<number | null>(null);
+
+  const load = () => {
+    packageApi.getOrderProgress().then(setRows).catch(console.error).finally(() => setLoading(false));
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const handleVerify = async (id: number) => {
+    setVerifyingId(id);
+    try {
+      await packageApi.verify(id);
+      toast.success('Sac vérifié.');
+      load();
+    } catch (err) {
+      toast.error(errorMessage(err, 'Échec de la vérification.'));
+    } finally {
+      setVerifyingId(null);
+    }
+  };
+
+  if (loading) {
+    return <p className="text-sm text-text-dim">Chargement...</p>;
+  }
+
+  if (rows.length === 0) {
+    return (
+      <div className="bg-panel border border-border rounded-md p-6 flex items-center justify-center min-h-[200px]">
+        <p className="text-sm text-text-dim text-center max-w-sm">Aucune commande active — rien à produire ni à vérifier pour le moment.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {rows.map((row) => {
+        const pct = row.target_quantity > 0 ? Math.min(100, Math.round((row.produced_quantity / row.target_quantity) * 100)) : 0;
+        return (
+          <div key={row.order_id} className="bg-panel border border-border rounded-md p-5 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
+              <div>
+                <div className="font-heading font-bold text-text">{row.product_reference}</div>
+                <div className="text-xs text-text-dim">{row.machine_code} · {row.bottle_category || 'sans recette'}</div>
+              </div>
+              <div className="text-right">
+                <div className="font-mono text-xl font-bold text-cyan-500">{row.produced_quantity} / {row.target_quantity}</div>
+                <div className="text-[10px] text-text-dim uppercase">bouteilles produites</div>
+              </div>
+            </div>
+
+            <div className="w-full h-2 bg-panel-2 rounded overflow-hidden">
+              <div className={`h-full ${pct >= 100 ? 'bg-green-500' : 'bg-cyan-500'}`} style={{ width: `${pct}%` }} />
+            </div>
+
+            {row.packages.length === 0 ? (
+              <p className="text-xs text-text-dim">Aucun sac produit pour cette commande pour l&apos;instant.</p>
+            ) : (
+              <div className="space-y-1.5">
+                {row.packages.map((p) => (
+                  <div key={p.id} className="flex items-center justify-between p-2.5 bg-bg border border-border rounded text-sm">
+                    <div>
+                      <div className="font-mono text-text">{p.reference}</div>
+                      <div className="text-[10px] text-text-dim">{p.bottle_count} btl · {new Date(p.production_started_at).toLocaleString()}</div>
                     </div>
-                    <div className="text-xs text-text-dim mt-0.5">{p.machine_code} • {p.supplier || '—'}</div>
-                    <div className="text-[10px] text-text-dim mt-1">{new Date(p.production_started_at).toLocaleString()}</div>
-                  </button>
+                    {p.verified_at ? (
+                      <span className="text-[10px] font-mono px-2 py-1 rounded bg-green-500/10 text-green-400 uppercase whitespace-nowrap">
+                        Vérifié{p.verified_by_name ? ` — ${p.verified_by_name}` : ''}
+                      </span>
+                    ) : (
+                      <button onClick={() => handleVerify(p.id)} disabled={verifyingId === p.id}
+                        className="bg-cyan-500 hover:bg-cyan-600 disabled:opacity-50 text-white px-3 py-1.5 rounded text-xs font-medium transition-colors whitespace-nowrap">
+                        {verifyingId === p.id ? '...' : 'Vérifier'}
+                      </button>
+                    )}
+                  </div>
                 ))}
               </div>
             )}
           </div>
-        </div>
-
-        {creating ? (
-          <PackageForm stockItems={stockItems} machines={machines} bottles={bottles} orders={orders} onSaved={afterSave} onCancel={() => setCreating(false)} />
-        ) : selected ? (
-          <PackageDetail pkg={selected} onShipped={(p) => { setSelected(p); refresh(); }} />
-        ) : (
-          <div className="bg-panel border border-border rounded-md p-6 flex items-center justify-center min-h-[200px]">
-            <p className="text-sm text-text-dim text-center max-w-sm">Sélectionnez un sac dans la liste, ou créez-en un nouveau.</p>
-          </div>
-        )}
-      </div>
+        );
+      })}
     </div>
   );
 }
@@ -320,9 +435,10 @@ function PackageForm({ stockItems, machines, bottles, orders, onSaved, onCancel 
   );
 }
 
-function PackageDetail({ pkg, onShipped }: { pkg: Package; onShipped: (p: Package) => void }) {
+function PackageDetail({ pkg, onShipped, onVerified }: { pkg: Package; onShipped: (p: Package) => void; onVerified: (p: Package) => void }) {
   const [shippedTo, setShippedTo] = useState('');
   const [shipping, setShipping] = useState(false);
+  const [verifying, setVerifying] = useState(false);
 
   const handleShip = async () => {
     setShipping(true);
@@ -337,6 +453,19 @@ function PackageDetail({ pkg, onShipped }: { pkg: Package; onShipped: (p: Packag
     }
   };
 
+  const handleVerify = async () => {
+    setVerifying(true);
+    try {
+      const updated = await packageApi.verify(pkg.id);
+      toast.success('Sac vérifié.');
+      onVerified(updated);
+    } catch (err) {
+      toast.error(errorMessage(err, 'Échec de la vérification.'));
+    } finally {
+      setVerifying(false);
+    }
+  };
+
   return (
     <div className="bg-panel border border-border rounded-md p-6 space-y-6">
       <div className="flex items-start justify-between">
@@ -344,11 +473,21 @@ function PackageDetail({ pkg, onShipped }: { pkg: Package; onShipped: (p: Packag
           <h2 className="font-heading font-bold text-lg text-text font-mono">{pkg.reference}</h2>
           <p className="text-xs text-text-dim mt-1">{pkg.bottle_count} bouteilles</p>
         </div>
-        {pkg.shipped_at ? (
-          <span className="text-xs bg-green-500/10 text-green-400 px-2 py-1 rounded font-mono uppercase">Expédié</span>
-        ) : (
-          <span className="text-xs bg-yellow-500/10 text-yellow-500 px-2 py-1 rounded font-mono uppercase">En stock</span>
-        )}
+        <div className="flex flex-col items-end gap-1.5">
+          {pkg.shipped_at ? (
+            <span className="text-xs bg-green-500/10 text-green-400 px-2 py-1 rounded font-mono uppercase">Expédié</span>
+          ) : (
+            <span className="text-xs bg-yellow-500/10 text-yellow-500 px-2 py-1 rounded font-mono uppercase">En stock</span>
+          )}
+          {pkg.verified_at ? (
+            <span className="text-xs bg-cyan-500/10 text-cyan-400 px-2 py-1 rounded font-mono uppercase">Vérifié{pkg.verified_by_name ? ` — ${pkg.verified_by_name}` : ''}</span>
+          ) : (
+            <button onClick={handleVerify} disabled={verifying}
+              className="text-xs bg-cyan-500 hover:bg-cyan-600 disabled:opacity-50 text-white px-2 py-1 rounded font-medium transition-colors whitespace-nowrap">
+              {verifying ? 'Vérification...' : 'Vérifier le sac'}
+            </button>
+          )}
+        </div>
       </div>
 
       {!pkg.shipped_at && (

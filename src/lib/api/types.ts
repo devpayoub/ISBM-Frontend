@@ -772,6 +772,9 @@ export interface Package {
   notes: string;
   shipped_at: string | null;
   shipped_to: string;
+  verified_at: string | null;
+  verified_by: number | null;
+  verified_by_name: string;
   created_by: number | null;
   created_by_name: string;
   created_at: string;
@@ -784,6 +787,26 @@ export interface PackageSummary {
   bottles_made: number;
   bottles_shipped: number;
   bottles_on_hand: number;
+}
+
+export interface PackageOrderProgressPackage {
+  id: number;
+  reference: string;
+  bottle_count: number;
+  production_started_at: string;
+  verified_at: string | null;
+  verified_by_name: string;
+}
+
+export interface PackageOrderProgress {
+  order_id: number;
+  product_reference: string;
+  machine_id: number;
+  machine_code: string;
+  bottle_category: string;
+  target_quantity: number;
+  produced_quantity: number;
+  packages: PackageOrderProgressPackage[];
 }
 
 export interface BottleCapacity {

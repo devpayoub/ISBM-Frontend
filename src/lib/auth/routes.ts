@@ -55,7 +55,7 @@ export const appRoutes: AppRoute[] = [
   { href: "/costs", label: "Coûts", icon: DollarSign, roles: ["ADMIN", "MANAGER"], group: "Production" },
 
   { href: "/stock", label: "Stock", icon: Boxes, roles: ["ADMIN", "MANAGER"], badge: "stock", group: "Stock & Traçabilité" },
-  { href: "/package", label: "Package / Sacs", icon: PackageSearch, roles: ["ADMIN", "MANAGER"], group: "Stock & Traçabilité" },
+  { href: "/package", label: "Package / Sacs", icon: PackageSearch, roles: ["ADMIN", "MANAGER", "CONTROLLER"], group: "Stock & Traçabilité" },
   { href: "/quality", label: "Qualité ISO", icon: Shield, roles: ["ADMIN", "MANAGER"], group: "Stock & Traçabilité" },
   { href: "/reclamation", label: "Réclamations", icon: MessageSquareWarning, roles: ["ADMIN", "MANAGER"], group: "Stock & Traçabilité" },
 
