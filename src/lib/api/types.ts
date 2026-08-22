@@ -271,6 +271,8 @@ export interface StockItem {
   ral: string;
   unit: string;
   quantity: string;
+  reserved_quantity: string;
+  available_quantity: string;
   min_threshold: string;
   batch: string;
   received_at: string | null;
@@ -469,9 +471,13 @@ export interface MaterialCheck {
   bottle_category: string;
   raw_material_reference: string;
   raw_material_required_kg: string;
+  raw_material_physical_kg: string;
+  raw_material_reserved_kg: string;
   raw_material_available_kg: string;
   colorant_reference: string;
   colorant_required_kg: string | null;
+  colorant_physical_kg: string | null;
+  colorant_reserved_kg: string | null;
   colorant_available_kg: string | null;
   stock_sufficient: boolean;
 }

@@ -451,9 +451,9 @@ function OrdersTab({ canEdit }: { canEdit: boolean }) {
                     <td className="py-3 text-xs">
                       {row.material_check ? (
                         <div title={
-                          `Matière première (${row.material_check.raw_material_reference}) : ${row.material_check.raw_material_available_kg} kg disponible / ${row.material_check.raw_material_required_kg} kg requis` +
+                          `Matière première (${row.material_check.raw_material_reference}) : ${row.material_check.raw_material_physical_kg} kg physique − ${row.material_check.raw_material_reserved_kg} kg réservé par d'autres commandes = ${row.material_check.raw_material_available_kg} kg disponible / ${row.material_check.raw_material_required_kg} kg requis` +
                           (row.material_check.colorant_required_kg
-                            ? `\nColorant (${row.material_check.colorant_reference}) : ${row.material_check.colorant_available_kg} kg disponible / ${row.material_check.colorant_required_kg} kg requis`
+                            ? `\nColorant (${row.material_check.colorant_reference}) : ${row.material_check.colorant_physical_kg} kg physique − ${row.material_check.colorant_reserved_kg} kg réservé par d'autres commandes = ${row.material_check.colorant_available_kg} kg disponible / ${row.material_check.colorant_required_kg} kg requis`
                             : '')
                         }>
                           <span className={`inline-block px-2 py-0.5 rounded font-semibold ${row.material_check.stock_sufficient ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'}`}>

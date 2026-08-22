@@ -259,6 +259,7 @@ export default function StockPage() {
                 {tab === 'COLORANT' && <th className="pb-2 font-semibold">RAL</th>}
                 <th className="pb-2 font-semibold">Fournisseur</th>
                 <th className="pb-2 font-semibold text-right">Quantité</th>
+                <th className="pb-2 font-semibold text-right">Disponible</th>
                 <th className="pb-2 font-semibold">Statut</th>
                 <th className="pb-2 font-semibold text-right">Actions</th>
               </tr>
@@ -271,6 +272,12 @@ export default function StockPage() {
                   {tab === 'COLORANT' && <td className="py-3 font-mono text-xs text-text-dim">{item.ral || '—'}</td>}
                   <td className="py-3 text-sm text-text-dim">{item.supplier || '—'}</td>
                   <td className="py-3 font-mono text-sm text-text text-right">{item.quantity} {item.unit}</td>
+                  <td className="py-3 font-mono text-sm text-right">
+                    <span className="text-text">{item.available_quantity} {item.unit}</span>
+                    {parseFloat(item.reserved_quantity) > 0 && (
+                      <div className="text-[10px] text-text-dim">−{item.reserved_quantity} réservé</div>
+                    )}
+                  </td>
                   <td className="py-3">
                     <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${STATUS_BADGE[item.status]}`}>{STATUS_LABEL[item.status]}</span>
                   </td>
