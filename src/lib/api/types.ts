@@ -739,6 +739,8 @@ export interface Package {
   machine: number;
   machine_code: string;
   machine_name: string;
+  planning_order: number | null;
+  planning_order_reference: string;
   bottle: number | null;
   bottle_category: string;
   bottle_count: number;

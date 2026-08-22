@@ -6,7 +6,8 @@ import { packageApi } from '@/lib/api/package';
 import { stockApi } from '@/lib/api/stock';
 import { machinesApi } from '@/lib/api/machines';
 import { catalogApi } from '@/lib/api/catalog';
-import { Package, PackageSummary, PersonnelSnapshotEntry, StockItem, Machine, BottleCharacteristic } from '@/lib/api/types';
+import { planningApi } from '@/lib/api/planning';
+import { Package, PackageSummary, PersonnelSnapshotEntry, StockItem, Machine, BottleCharacteristic, PlanningOrder } from '@/lib/api/types';
 import { errorMessage, parseFieldErrors } from '@/lib/api/errors';
 import { Input } from '@/components/ui/input';
 import { ROLE_LABELS, UserRole } from '@/lib/auth/rbac';
@@ -21,6 +22,7 @@ export default function PackagePage() {
   const [stockItems, setStockItems] = useState<StockItem[]>([]);
   const [machines, setMachines] = useState<Machine[]>([]);
   const [bottles, setBottles] = useState<BottleCharacteristic[]>([]);
+  const [orders, setOrders] = useState<PlanningOrder[]>([]);
   const [summary, setSummary] = useState<PackageSummary | null>(null);
 
   const refresh = () => {
@@ -36,6 +38,7 @@ export default function PackagePage() {
     stockApi.getItems({ is_active: 'true' }).then((res) => setStockItems(res.results)).catch(console.error);
     machinesApi.getMachines().then((res) => setMachines(res.results)).catch(console.error);
     catalogApi.getCharacteristics().then((res) => setBottles(res.results)).catch(console.error);
+    planningApi.getOrders({ status: 'QUEUED' }).then((res) => setOrders(res.results)).catch(console.error);
   }, []);
 
   useEffect(() => {
@@ -112,7 +115,7 @@ export default function PackagePage() {
         </div>
 
         {creating ? (
-          <PackageForm stockItems={stockItems} machines={machines} bottles={bottles} onSaved={afterSave} onCancel={() => setCreating(false)} />
+          <PackageForm stockItems={stockItems} machines={machines} bottles={bottles} orders={orders} onSaved={afterSave} onCancel={() => setCreating(false)} />
         ) : selected ? (
           <PackageDetail pkg={selected} onShipped={(p) => { setSelected(p); refresh(); }} />
         ) : (
@@ -144,10 +147,11 @@ function PersonnelPreview({ data, loading }: { data: PersonnelSnapshotEntry[] | 
   );
 }
 
-function PackageForm({ stockItems, machines, bottles, onSaved, onCancel }: {
-  stockItems: StockItem[]; machines: Machine[]; bottles: BottleCharacteristic[]; onSaved: (p: Package) => void; onCancel: () => void;
+function PackageForm({ stockItems, machines, bottles, orders, onSaved, onCancel }: {
+  stockItems: StockItem[]; machines: Machine[]; bottles: BottleCharacteristic[]; orders: PlanningOrder[]; onSaved: (p: Package) => void; onCancel: () => void;
 }) {
   const [machine, setMachine] = useState('');
+  const [planningOrder, setPlanningOrder] = useState('');
   const [bottle, setBottle] = useState('');
   const [bottleCount, setBottleCount] = useState('');
   const [rawMaterial, setRawMaterial] = useState('');
@@ -185,6 +189,16 @@ function PackageForm({ stockItems, machines, bottles, onSaved, onCancel }: {
     }
   };
 
+  const handlePlanningOrderChange = (value: string) => {
+    setPlanningOrder(value);
+    const order = orders.find((o) => String(o.id) === value);
+    if (order) {
+      setMachine(String(order.machine));
+      if (order.bottle) handleBottleChange(String(order.bottle));
+      setBottleCount(String(order.quantity));
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
@@ -192,6 +206,7 @@ function PackageForm({ stockItems, machines, bottles, onSaved, onCancel }: {
     try {
       const created = await packageApi.createPackage({
         machine: Number(machine),
+        planning_order: planningOrder ? Number(planningOrder) : null,
         bottle: bottle ? Number(bottle) : null,
         bottle_count: Number(bottleCount),
         raw_material: rawMaterial ? Number(rawMaterial) : null,
@@ -217,10 +232,19 @@ function PackageForm({ stockItems, machines, bottles, onSaved, onCancel }: {
       <h2 className="font-heading font-bold text-lg text-text">Nouveau sac</h2>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="md:col-span-2">
+          <label className="block text-xs font-semibold text-text-dim uppercase mb-1">Commande liée (optionnel)</label>
+          <select value={planningOrder} onChange={(e) => handlePlanningOrderChange(e.target.value)}
+            className="w-full bg-bg border border-border rounded p-2 text-sm text-text focus:outline-none focus:border-cyan-500">
+            <option value="">Aucune — sac indépendant</option>
+            {orders.map((o) => <option key={o.id} value={o.id}>{o.product_reference} — {o.bottle_category || 'sans recette'} × {o.quantity}</option>)}
+          </select>
+          {planningOrder && <p className="text-xs text-text-dim mt-1">Machine, recette et quantité renseignées depuis la commande. La consommation de stock sera imputée à cette commande (un second sac lié ne déduit pas de stock une deuxième fois).</p>}
+        </div>
         <div>
           <label className="block text-xs font-semibold text-text-dim uppercase mb-1">Machine / ligne *</label>
-          <select value={machine} onChange={(e) => setMachine(e.target.value)} required
-            className="w-full bg-bg border border-border rounded p-2 text-sm text-text focus:outline-none focus:border-cyan-500">
+          <select value={machine} onChange={(e) => setMachine(e.target.value)} required disabled={!!planningOrder}
+            className="w-full bg-bg border border-border rounded p-2 text-sm text-text focus:outline-none focus:border-cyan-500 disabled:opacity-60 disabled:cursor-not-allowed">
             <option value="">Sélectionner...</option>
             {machines.map((m) => <option key={m.id} value={m.id}>{m.name} ({m.code})</option>)}
           </select>
@@ -231,8 +255,8 @@ function PackageForm({ stockItems, machines, bottles, onSaved, onCancel }: {
         </div>
         <div>
           <label className="block text-xs font-semibold text-text-dim uppercase mb-1">Recette bouteille (catalogue)</label>
-          <select value={bottle} onChange={(e) => handleBottleChange(e.target.value)}
-            className="w-full bg-bg border border-border rounded p-2 text-sm text-text focus:outline-none focus:border-cyan-500">
+          <select value={bottle} onChange={(e) => handleBottleChange(e.target.value)} disabled={!!planningOrder}
+            className="w-full bg-bg border border-border rounded p-2 text-sm text-text focus:outline-none focus:border-cyan-500 disabled:opacity-60 disabled:cursor-not-allowed">
             <option value="">Aucune</option>
             {bottles.map((b) => <option key={b.id} value={b.id}>{b.category}</option>)}
           </select>
@@ -345,6 +369,7 @@ function PackageDetail({ pkg, onShipped }: { pkg: Package; onShipped: (p: Packag
         <h3 className="text-xs font-semibold text-text-dim tracking-wider uppercase mb-2">Traçabilité</h3>
         <div className="bg-bg border border-border rounded p-3 text-sm space-y-2">
           <div className="flex justify-between"><span className="text-text-dim">Sac</span><span className="font-mono text-text">{pkg.reference}</span></div>
+          <div className="flex justify-between"><span className="text-text-dim">Commande liée</span><span className="font-mono text-text">{pkg.planning_order_reference || '—'}</span></div>
           <div className="flex justify-between"><span className="text-text-dim">Machine</span><span className="font-mono text-text">{pkg.machine_name} ({pkg.machine_code})</span></div>
           <div className="flex justify-between"><span className="text-text-dim">Recette bouteille</span><span className="font-mono text-text">{pkg.bottle_category || '—'}</span></div>
           <div className="flex justify-between"><span className="text-text-dim">Matière première</span><span className="font-mono text-text">{pkg.raw_material_reference_snapshot || '—'}{pkg.raw_material_consumed_kg ? ` (−${pkg.raw_material_consumed_kg} kg)` : ''}</span></div>
