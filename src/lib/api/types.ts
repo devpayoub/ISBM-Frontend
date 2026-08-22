@@ -480,6 +480,8 @@ export interface MaterialCheck {
   colorant_reserved_kg: string | null;
   colorant_available_kg: string | null;
   stock_sufficient: boolean;
+  stock_status: 'OK' | 'WARNING' | 'INSUFFICIENT';
+  is_first_shortage: boolean;
 }
 
 export interface ScheduledOrder {
