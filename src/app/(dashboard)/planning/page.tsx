@@ -237,7 +237,6 @@ function OrdersTab({ canEdit }: { canEdit: boolean }) {
   const [color, setColor] = useState('');
   const [quantity, setQuantity] = useState('');
   const [timePerBottleSec, setTimePerBottleSec] = useState('');
-  const [priority, setPriority] = useState('100');
   const [requestedStart, setRequestedStart] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -267,7 +266,7 @@ function OrdersTab({ canEdit }: { canEdit: boolean }) {
 
   const resetForm = () => {
     setMachine(''); setBottle(''); setColor('');
-    setQuantity(''); setTimePerBottleSec(''); setPriority('100'); setRequestedStart('');
+    setQuantity(''); setTimePerBottleSec(''); setRequestedStart('');
     setFieldErrors({});
   };
 
@@ -282,7 +281,6 @@ function OrdersTab({ canEdit }: { canEdit: boolean }) {
         color,
         quantity: Number(quantity),
         time_per_bottle_sec: timePerBottleSec,
-        priority: Number(priority) || 100,
         requested_start: requestedStart ? new Date(requestedStart).toISOString() : null,
       });
       toast.success('Commande créée.');
@@ -296,17 +294,6 @@ function OrdersTab({ canEdit }: { canEdit: boolean }) {
       toast.error(errorMessage(err, 'Échec de la création.'));
     } finally {
       setSubmitting(false);
-    }
-  };
-
-  const handlePriorityChange = async (order: PlanningOrder, newPriority: number) => {
-    try {
-      await planningApi.updateOrder(order.id, { priority: newPriority });
-      refreshSchedule();
-      refreshOrders();
-    } catch (err) {
-      console.error('Failed to reprioritize order', err);
-      toast.error(errorMessage(err, 'Échec de la modification de la priorité.'));
     }
   };
 
@@ -373,11 +360,6 @@ function OrdersTab({ canEdit }: { canEdit: boolean }) {
             <Input type="number" step="0.01" min="0.01" value={timePerBottleSec} onChange={(e) => setTimePerBottleSec(e.target.value)}
               required disabled={!!bottle} error={fieldErrors.time_per_bottle_sec}
               className="disabled:opacity-60 disabled:cursor-not-allowed" />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-text-dim uppercase mb-1">Priorité (plus petit = plus urgent)</label>
-            <input type="number" value={priority} onChange={(e) => setPriority(e.target.value)}
-              className="w-full bg-bg border border-border rounded p-2 text-sm text-text focus:outline-none focus:border-cyan-500" />
           </div>
           <div>
             <label className="block text-xs font-semibold text-text-dim uppercase mb-1">Début souhaité (optionnel)</label>
@@ -458,15 +440,6 @@ function OrdersTab({ canEdit }: { canEdit: boolean }) {
                     </td>
                     {canEdit && (
                       <td className="py-3 text-right whitespace-nowrap space-x-2">
-                        {order && (
-                          <input
-                            type="number"
-                            defaultValue={row.priority}
-                            onBlur={(e) => { const v = Number(e.target.value); if (!Number.isNaN(v) && v !== row.priority) handlePriorityChange(order, v); }}
-                            title="Priorité (plus petit = plus urgent)"
-                            className="w-14 bg-bg border border-border rounded p-1 text-xs font-mono text-text text-right focus:outline-none focus:border-cyan-500"
-                          />
-                        )}
                         {order && (
                           <button onClick={() => handleDelete(order)} className="text-red-500 hover:text-red-400 text-xs font-medium">
                             Supprimer

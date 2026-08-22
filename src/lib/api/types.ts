@@ -457,7 +457,6 @@ export interface PlanningOrder {
   quantity: number;
   time_per_bottle_sec: string;
   mold_change_min: number;
-  priority: number;
   requested_start: string | null;
   status: PlanningOrderStatus;
   notes: string;
@@ -492,7 +491,6 @@ export interface ScheduledOrder {
   product_reference: string;
   color: string;
   quantity: number;
-  priority: number;
   mold_change_min: number;
   production_time_min: number;
   estimated_start: string;
