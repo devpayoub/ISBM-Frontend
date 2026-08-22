@@ -366,13 +366,18 @@ export interface BottleCharacteristic {
 }
 
 // ──────────────────────────── Production ────────────────────────────
+export type ProductionEntryStatus = 'DRAFT' | 'VALIDATED' | 'STOCK_CONSUMED';
+
 export interface ProductionEntry {
   id: number;
   date: string;
   hour: number;
   machine: number;
   machine_name?: string;
+  machine_code?: string;
   shift: Shift;
+  planning_order: number | null;
+  planning_order_reference?: string;
   bottles_produced: number;
   caps_produced: number;
   reject_count: number;
@@ -382,6 +387,14 @@ export interface ProductionEntry {
   pet_kg: number;
   energy_kwh: number;
   air_m3: number;
+  status: ProductionEntryStatus;
+  validated_at: string | null;
+  validated_by: number | null;
+  validated_by_name?: string;
+  raw_material_consumed_kg: string | null;
+  colorant_consumed_kg: string | null;
+  theoretical_raw_kg: string | null;
+  theoretical_colorant_kg: string | null;
   recorded_by: number;
 }
 
