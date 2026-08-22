@@ -67,22 +67,24 @@ export default function PackagePage() {
         )}
       </div>
 
-      <div className="flex gap-1 bg-bg border border-border rounded-md p-1 w-fit">
-        <button
-          onClick={() => setTab('sacs')}
-          className={`px-4 py-2 rounded text-sm font-medium transition-colors ${tab === 'sacs' ? 'bg-panel text-text shadow' : 'text-text-dim hover:text-text'}`}
-        >
-          Sacs
-        </button>
-        <button
-          onClick={() => setTab('suivi')}
-          className={`px-4 py-2 rounded text-sm font-medium transition-colors ${tab === 'suivi' ? 'bg-panel text-text shadow' : 'text-text-dim hover:text-text'}`}
-        >
-          Suivi par commande
-        </button>
-      </div>
+      {canManage && (
+        <div className="flex gap-1 bg-bg border border-border rounded-md p-1 w-fit">
+          <button
+            onClick={() => setTab('sacs')}
+            className={`px-4 py-2 rounded text-sm font-medium transition-colors ${tab === 'sacs' ? 'bg-panel text-text shadow' : 'text-text-dim hover:text-text'}`}
+          >
+            Sacs
+          </button>
+          <button
+            onClick={() => setTab('suivi')}
+            className={`px-4 py-2 rounded text-sm font-medium transition-colors ${tab === 'suivi' ? 'bg-panel text-text shadow' : 'text-text-dim hover:text-text'}`}
+          >
+            Suivi par commande
+          </button>
+        </div>
+      )}
 
-      {tab === 'suivi' ? (
+      {!canManage || tab === 'suivi' ? (
         <OrderProgressPanel />
       ) : (
         <>
