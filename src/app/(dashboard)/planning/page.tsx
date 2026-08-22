@@ -6,7 +6,7 @@ import { planningApi } from '@/lib/api/planning';
 import { machinesApi } from '@/lib/api/machines';
 import { catalogApi } from '@/lib/api/catalog';
 import {
-  ProductionPlan, PlanningOrder, ScheduledOrder, Machine, Mold, BottleCharacteristic,
+  ProductionPlan, PlanningOrder, ScheduledOrder, Machine, BottleCharacteristic,
 } from '@/lib/api/types';
 import { useAuthStore } from '@/lib/store/useAuthStore';
 import { can } from '@/lib/auth/rbac';
@@ -226,7 +226,6 @@ const STATUS_LABELS: Record<string, string> = {
 
 function OrdersTab({ canEdit }: { canEdit: boolean }) {
   const [machines, setMachines] = useState<Machine[]>([]);
-  const [molds, setMolds] = useState<Mold[]>([]);
   const [bottles, setBottles] = useState<BottleCharacteristic[]>([]);
   const [machineFilter, setMachineFilter] = useState('');
   const [schedule, setSchedule] = useState<ScheduledOrder[]>([]);
@@ -234,13 +233,10 @@ function OrdersTab({ canEdit }: { canEdit: boolean }) {
   const [showForm, setShowForm] = useState(false);
 
   const [machine, setMachine] = useState('');
-  const [mold, setMold] = useState('');
   const [bottle, setBottle] = useState('');
-  const [productReference, setProductReference] = useState('');
   const [color, setColor] = useState('');
   const [quantity, setQuantity] = useState('');
   const [timePerBottleSec, setTimePerBottleSec] = useState('');
-  const [moldChangeMin, setMoldChangeMin] = useState('0');
   const [priority, setPriority] = useState('100');
   const [requestedStart, setRequestedStart] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -254,10 +250,14 @@ function OrdersTab({ canEdit }: { canEdit: boolean }) {
     catalogApi.getCharacteristics().then((res) => setBottles(res.results)).catch(console.error);
   }, []);
 
-  useEffect(() => {
-    if (machine) machinesApi.getMolds(Number(machine)).then((res) => setMolds(res.results)).catch(console.error);
-    else setMolds([]);
-  }, [machine]);
+  // Temps / bouteille comes from the recipe now instead of being typed —
+  // same auto-fill+lock pattern as Package's raw material/color fields.
+  const handleBottleChange = (value: string) => {
+    setBottle(value);
+    const recipe = bottles.find((b) => String(b.id) === value);
+    if (recipe?.time_per_bottle_sec) setTimePerBottleSec(recipe.time_per_bottle_sec);
+    else setTimePerBottleSec('');
+  };
 
   useEffect(() => {
     refreshSchedule();
@@ -266,8 +266,8 @@ function OrdersTab({ canEdit }: { canEdit: boolean }) {
   }, [machineFilter]);
 
   const resetForm = () => {
-    setMachine(''); setMold(''); setBottle(''); setProductReference(''); setColor('');
-    setQuantity(''); setTimePerBottleSec(''); setMoldChangeMin('0'); setPriority('100'); setRequestedStart('');
+    setMachine(''); setBottle(''); setColor('');
+    setQuantity(''); setTimePerBottleSec(''); setPriority('100'); setRequestedStart('');
     setFieldErrors({});
   };
 
@@ -278,13 +278,10 @@ function OrdersTab({ canEdit }: { canEdit: boolean }) {
     try {
       await planningApi.createOrder({
         machine: Number(machine),
-        mold: mold ? Number(mold) : null,
         bottle: bottle ? Number(bottle) : null,
-        product_reference: productReference,
         color,
         quantity: Number(quantity),
         time_per_bottle_sec: timePerBottleSec,
-        mold_change_min: Number(moldChangeMin) || 0,
         priority: Number(priority) || 100,
         requested_start: requestedStart ? new Date(requestedStart).toISOString() : null,
       });
@@ -346,31 +343,19 @@ function OrdersTab({ canEdit }: { canEdit: boolean }) {
         <form onSubmit={handleSubmit} className="bg-panel border border-border rounded-md p-4 grid grid-cols-2 md:grid-cols-4 gap-4">
           <div>
             <label className="block text-xs font-semibold text-text-dim uppercase mb-1">Machine *</label>
-            <select value={machine} onChange={(e) => { setMachine(e.target.value); setMold(''); }} required
+            <select value={machine} onChange={(e) => setMachine(e.target.value)} required
               className="w-full bg-bg border border-border rounded p-2 text-sm text-text focus:outline-none focus:border-cyan-500">
               <option value="">Sélectionner...</option>
               {machines.map((m) => <option key={m.id} value={m.id}>{m.name} ({m.code})</option>)}
             </select>
           </div>
           <div>
-            <label className="block text-xs font-semibold text-text-dim uppercase mb-1">Moule</label>
-            <select value={mold} onChange={(e) => setMold(e.target.value)} disabled={!machine}
-              className="w-full bg-bg border border-border rounded p-2 text-sm text-text focus:outline-none focus:border-cyan-500 disabled:opacity-50">
-              <option value="">Aucun</option>
-              {molds.map((m) => <option key={m.id} value={m.id}>{m.name} ({m.reference || 'sans référence'})</option>)}
-            </select>
-          </div>
-          <div>
             <label className="block text-xs font-semibold text-text-dim uppercase mb-1">Bouteille (catalogue)</label>
-            <select value={bottle} onChange={(e) => setBottle(e.target.value)}
+            <select value={bottle} onChange={(e) => handleBottleChange(e.target.value)}
               className="w-full bg-bg border border-border rounded p-2 text-sm text-text focus:outline-none focus:border-cyan-500">
               <option value="">Aucune</option>
               {bottles.map((b) => <option key={b.id} value={b.id}>{b.category}</option>)}
             </select>
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-text-dim uppercase mb-1">Référence produit</label>
-            <Input type="text" value={productReference} onChange={(e) => setProductReference(e.target.value)} placeholder="Bottles A" error={fieldErrors.product_reference} />
           </div>
           <div>
             <label className="block text-xs font-semibold text-text-dim uppercase mb-1">Couleur</label>
@@ -382,13 +367,12 @@ function OrdersTab({ canEdit }: { canEdit: boolean }) {
             <Input type="number" min="1" value={quantity} onChange={(e) => setQuantity(e.target.value)} required error={fieldErrors.quantity} />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-text-dim uppercase mb-1">Temps / bouteille (s) *</label>
-            <Input type="number" step="0.01" min="0.01" value={timePerBottleSec} onChange={(e) => setTimePerBottleSec(e.target.value)} required error={fieldErrors.time_per_bottle_sec} />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-text-dim uppercase mb-1">Changement moule (min)</label>
-            <input type="number" min="0" value={moldChangeMin} onChange={(e) => setMoldChangeMin(e.target.value)}
-              className="w-full bg-bg border border-border rounded p-2 text-sm text-text focus:outline-none focus:border-cyan-500" />
+            <label className="block text-xs font-semibold text-text-dim uppercase mb-1">
+              Temps / bouteille (s) * {bottle && <span className="text-cyan-500 normal-case">(auto — recette)</span>}
+            </label>
+            <Input type="number" step="0.01" min="0.01" value={timePerBottleSec} onChange={(e) => setTimePerBottleSec(e.target.value)}
+              required disabled={!!bottle} error={fieldErrors.time_per_bottle_sec}
+              className="disabled:opacity-60 disabled:cursor-not-allowed" />
           </div>
           <div>
             <label className="block text-xs font-semibold text-text-dim uppercase mb-1">Priorité (plus petit = plus urgent)</label>

@@ -38,6 +38,7 @@ export default function SettingsPage() {
   const [editingBottleId, setEditingBottleId] = useState<number | null>(null);
   const [bCategory, setBCategory] = useState('');
   const [bReference, setBReference] = useState('');
+  const [bTimePerBottleSec, setBTimePerBottleSec] = useState('');
   const [bRawMaterial, setBRawMaterial] = useState('');
   const [bRawMaterialQty, setBRawMaterialQty] = useState('0');
   const [bColorant, setBColorant] = useState('');
@@ -98,7 +99,7 @@ export default function SettingsPage() {
 
   const resetBottleForm = () => {
     setEditingBottleId(null);
-    setBCategory(''); setBReference('');
+    setBCategory(''); setBReference(''); setBTimePerBottleSec('');
     setBRawMaterial(''); setBRawMaterialQty('0');
     setBColorant(''); setBColorantQty('0');
     setBBouchantType('HDPE'); setBBouchantRawQty('0'); setBBouchantColorantQty('0');
@@ -114,6 +115,7 @@ export default function SettingsPage() {
   const startEditBottle = (b: BottleCharacteristic) => {
     setEditingBottleId(b.id);
     setBCategory(b.category); setBReference(b.reference);
+    setBTimePerBottleSec(b.time_per_bottle_sec || '');
     setBRawMaterial(String(b.raw_material)); setBRawMaterialQty(b.raw_material_qty_g);
     setBColorant(b.colorant ? String(b.colorant) : ''); setBColorantQty(b.colorant_qty_g);
     setBBouchantType(b.bouchant_type); setBBouchantRawQty(b.bouchant_raw_material_qty_g); setBBouchantColorantQty(b.bouchant_colorant_qty_g);
@@ -127,6 +129,7 @@ export default function SettingsPage() {
     setBottleErrors({});
     const payload = {
       category: bCategory, reference: bReference,
+      time_per_bottle_sec: bTimePerBottleSec || null,
       raw_material: bRawMaterial ? Number(bRawMaterial) : undefined,
       raw_material_qty_g: bRawMaterialQty,
       colorant: bColorant ? Number(bColorant) : null,
@@ -376,6 +379,10 @@ export default function SettingsPage() {
                   <label className="block text-xs font-semibold text-text-dim uppercase mb-1">Référence (optionnel)</label>
                   <Input type="text" value={bReference} onChange={(e) => setBReference(e.target.value)} error={bottleErrors.reference} />
                 </div>
+                <div>
+                  <label className="block text-xs font-semibold text-text-dim uppercase mb-1">Temps / bouteille (s)</label>
+                  <Input type="number" step="0.01" min="0.01" value={bTimePerBottleSec} onChange={(e) => setBTimePerBottleSec(e.target.value)} error={bottleErrors.time_per_bottle_sec} />
+                </div>
               </div>
 
               <div className="border-t border-border/50 pt-4">
@@ -451,6 +458,7 @@ export default function SettingsPage() {
               <thead>
                 <tr className="border-b border-border text-[10px] uppercase tracking-wider text-text-dim">
                   <th className="pb-2 font-semibold">Catégorie</th>
+                  <th className="pb-2 font-semibold text-right">Temps / bouteille</th>
                   <th className="pb-2 font-semibold">Matière première</th>
                   <th className="pb-2 font-semibold">Colorant</th>
                   <th className="pb-2 font-semibold">Bouchant</th>
@@ -464,6 +472,7 @@ export default function SettingsPage() {
                       <div className="text-sm font-medium">{b.category}</div>
                       <div className="text-xs text-text-dim font-mono">{b.reference || '—'}</div>
                     </td>
+                    <td className="py-3 font-mono text-xs text-text-dim text-right">{b.time_per_bottle_sec ? `${b.time_per_bottle_sec} s` : '—'}</td>
                     <td className="py-3 text-xs text-text-dim">
                       {b.raw_material_name} ({b.raw_material_reference})<br />
                       <span className="font-mono">{b.raw_material_qty_g} g</span>

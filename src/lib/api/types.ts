@@ -348,6 +348,7 @@ export interface BottleCharacteristic {
   id: number;
   category: string;
   reference: string;
+  time_per_bottle_sec: string | null;
   raw_material: number;
   raw_material_name: string;
   raw_material_reference: string;
