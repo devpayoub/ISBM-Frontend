@@ -1,5 +1,5 @@
 import { fetchClient } from './client';
-import { PaginatedResponse, Reclamation, ResolvedPersonnel } from './types';
+import { PaginatedResponse, Reclamation, ReclamationAttachment, ResolvedPersonnel } from './types';
 
 export const reclamationApi = {
   getReclamations: (params?: Record<string, string>) => {
@@ -27,5 +27,15 @@ export const reclamationApi = {
   resolvePersonnelPreview: (when: string, machineId?: number) => {
     const params = new URLSearchParams({ when, ...(machineId ? { machine: String(machineId) } : {}) });
     return fetchClient<ResolvedPersonnel>(`/api/v1/reclamation/reclamations/resolve-personnel?${params.toString()}`);
+  },
+
+  addAttachment: (id: number, file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return fetchClient<ReclamationAttachment>(`/api/v1/reclamation/reclamations/${id}/add_attachment`, {
+      method: 'POST',
+      body: form,
+      headers: {}, // let the browser set the multipart content-type
+    });
   },
 };

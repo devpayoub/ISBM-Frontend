@@ -11,6 +11,7 @@ import {
 } from '@/lib/api/types';
 import { errorMessage, parseFieldErrors } from '@/lib/api/errors';
 import { Input } from '@/components/ui/input';
+import { ReclamationAttachmentUpload } from '@/components/reclamation/ReclamationAttachmentUpload';
 
 const SEVERITIES: ReclamationSeverity[] = ['CRITICAL', 'MAJOR', 'MINOR'];
 const SEVERITY_LABELS: Record<ReclamationSeverity, string> = {
@@ -347,6 +348,25 @@ function ReclamationDetail({ reclamation, onUpdated }: { reclamation: Reclamatio
           </div>
         </div>
       )}
+
+      <div>
+        <h3 className="text-xs font-semibold text-text-dim tracking-wider uppercase mb-2">Pièces jointes</h3>
+        <ReclamationAttachmentUpload
+          reclamationId={reclamation.id}
+          onUploaded={(attachment) => onUpdated({ ...reclamation, attachments: [attachment, ...reclamation.attachments] })}
+        />
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
+          {reclamation.attachments.map((a) => (
+            <a key={a.id} href={a.file} target="_blank" rel="noreferrer"
+              className="block bg-bg border border-border rounded p-2 text-xs text-text-dim hover:border-cyan-500 truncate">
+              {a.file.split('?')[0].split('/').pop()} — {a.uploaded_by_name || '—'}
+            </a>
+          ))}
+          {reclamation.attachments.length === 0 && (
+            <span className="text-xs text-text-dim">Aucune pièce jointe pour le moment.</span>
+          )}
+        </div>
+      </div>
 
       {reclamation.status === 'CLOSED' ? (
         <div className="bg-green-500/5 border border-green-500/20 rounded p-3">
