@@ -16,9 +16,6 @@ export default function CostsPage() {
 
   // Summary from daily or fallback
   const costBreakdown = [
-    { label: 'PET', value: dailyData?.pet_cost ?? 0, color: '#3b82f6' },
-    { label: 'Énergie', value: dailyData?.energy_cost ?? 0, color: '#f97316' },
-    { label: 'Air comprimé', value: dailyData?.air_cost ?? 0, color: '#06b6d4' },
     { label: 'Main d\'œuvre', value: dailyData?.labor_cost ?? 0, color: '#8b5cf6' },
   ];
   const total = costBreakdown.reduce((s, c) => s + c.value, 0);
@@ -36,7 +33,7 @@ export default function CostsPage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         {costBreakdown.map(c => (
           <div key={c.label} className="bg-panel border border-border rounded-md p-4">
             <div className="text-[11px] font-sans font-semibold tracking-widest text-text-dim uppercase">{c.label}</div>
@@ -50,33 +47,6 @@ export default function CostsPage() {
           <div className="font-mono text-2xl font-bold mt-1 text-text">
             {total.toFixed(0)} <span className="text-sm text-text-dim">DT</span>
           </div>
-        </div>
-      </div>
-
-      {/* Bar chart (CSS) */}
-      <div className="bg-panel border border-border rounded-md p-6">
-        <h2 className="text-sm font-semibold text-text-dim tracking-wider uppercase mb-4">Répartition</h2>
-        <div className="flex gap-1 h-8 rounded overflow-hidden">
-          {costBreakdown.map(c => {
-            const pct = total > 0 ? (c.value / total) * 100 : 25;
-            return (
-              <div
-                key={c.label}
-                className="transition-all duration-700 flex items-center justify-center text-white text-[10px] font-mono font-bold"
-                style={{ width: `${pct}%`, backgroundColor: c.color, minWidth: pct > 0 ? '40px' : '0' }}
-              >
-                {pct > 10 ? `${pct.toFixed(0)}%` : ''}
-              </div>
-            );
-          })}
-        </div>
-        <div className="flex gap-4 mt-3">
-          {costBreakdown.map(c => (
-            <div key={c.label} className="flex items-center gap-1">
-              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: c.color }} />
-              <span className="text-[10px] text-text-dim">{c.label}</span>
-            </div>
-          ))}
         </div>
       </div>
 

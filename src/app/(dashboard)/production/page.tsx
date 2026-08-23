@@ -29,8 +29,6 @@ interface GridCell {
   caps_produced: number;
   reject_count: number;
   downtime_min: number;
-  pet_kg: number;
-  energy_kwh: number;
   status: ProductionEntryStatus;
   planning_order: number | null;
   planning_order_reference: string;
@@ -49,8 +47,6 @@ const emptyCell = (machineId: number, hour: number): GridCell => ({
   caps_produced: 0,
   reject_count: 0,
   downtime_min: 0,
-  pet_kg: 0,
-  energy_kwh: 0,
   status: 'DRAFT',
   planning_order: null,
   planning_order_reference: '',
@@ -68,8 +64,6 @@ const overlayEntry = (cell: GridCell, entry: ProductionEntry): GridCell => ({
   caps_produced: entry.caps_produced,
   reject_count: entry.reject_count,
   downtime_min: entry.downtime_min,
-  pet_kg: entry.pet_kg,
-  energy_kwh: entry.energy_kwh,
   status: entry.status,
   planning_order: entry.planning_order,
   planning_order_reference: entry.planning_order_reference || '',
@@ -135,8 +129,6 @@ export default function ProductionPage() {
       caps_produced: c.caps_produced,
       reject_count: c.reject_count,
       downtime_min: c.downtime_min,
-      pet_kg: c.pet_kg,
-      energy_kwh: c.energy_kwh,
     }));
     try {
       const saved = await productionApi.bulkCreateEntries(payload);

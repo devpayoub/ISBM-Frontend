@@ -384,9 +384,6 @@ export interface ProductionEntry {
   reject_pct: number;
   downtime_min: number;
   downtime_reason?: string;
-  pet_kg: number;
-  energy_kwh: number;
-  air_m3: number;
   status: ProductionEntryStatus;
   validated_at: string | null;
   validated_by: number | null;
@@ -411,8 +408,6 @@ export interface OEERecord {
   performance_pct: number;
   quality_pct: number;
   trs_pct: number;
-  kwh_per_bottle: number;
-  air_per_bottle: number;
   reject_count: number;
 }
 
@@ -431,26 +426,10 @@ export interface CostRecord {
   machine_name?: string;
   date: string;
   shift: Shift;
-  pet_cost: number;
-  energy_cost: number;
-  air_cost: number;
   labor_cost: number;
   total_cost: number;
   production_count: number;
   cost_per_bottle: number;
-}
-
-export interface ProductionPlan {
-  id: number;
-  date: string;
-  machine: number;
-  machine_name?: string;
-  product: string;
-  target_bph: number;
-  actual_bph: number;
-  variance: number;
-  variance_pct: number;
-  notes?: string;
 }
 
 export type PlanningOrderStatus = 'QUEUED' | 'IN_PROGRESS' | 'DONE' | 'CANCELLED';

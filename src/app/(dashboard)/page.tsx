@@ -46,13 +46,12 @@ export default function DashboardPage() {
       </div>
 
       {/* KPI Strip */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { label: 'TRS', value: kpis?.trs_global_pct, suffix: '%' },
           { label: 'PRODUCTION', value: kpis?.production?.bottles, suffix: '' },
           { label: 'ALERTES', value: kpis?.active_alerts, suffix: '', alert: kpis?.critical_active_alerts > 0 },
           { label: 'COÛT/BTL', value: kpis?.cost_per_bottle, suffix: ' DT' },
-          { label: 'ÉNERGIE', value: kpis?.kwh_per_bottle, suffix: ' kWh/u' },
         ].map(({ label, value, suffix, alert }) => (
           <div key={label} className="bg-panel border border-border rounded-md p-4">
             <div className="text-[11px] font-sans font-semibold tracking-widest text-text-dim uppercase">{label}</div>
