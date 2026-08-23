@@ -324,6 +324,8 @@ export interface Reclamation {
   stock_item_name: string;
   stock_item_reference: string;
   product_reference: string;
+  package: number | null;
+  package_reference: string;
   machine: number | null;
   machine_code: string;
   production_at: string | null;

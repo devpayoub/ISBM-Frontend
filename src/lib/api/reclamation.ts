@@ -29,6 +29,11 @@ export const reclamationApi = {
     return fetchClient<ResolvedPersonnel>(`/api/v1/reclamation/reclamations/resolve-personnel?${params.toString()}`);
   },
 
+  resolvePersonnelPreviewByPackage: (packageId: number) => {
+    const params = new URLSearchParams({ package: String(packageId) });
+    return fetchClient<ResolvedPersonnel>(`/api/v1/reclamation/reclamations/resolve-personnel?${params.toString()}`);
+  },
+
   addAttachment: (id: number, file: File) => {
     const form = new FormData();
     form.append('file', file);

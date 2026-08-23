@@ -4,10 +4,10 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { reclamationApi } from '@/lib/api/reclamation';
 import { stockApi } from '@/lib/api/stock';
-import { machinesApi } from '@/lib/api/machines';
+import { packageApi } from '@/lib/api/package';
 import {
   Reclamation, ReclamationSeverity, ReclamationStatus, ResolvedPersonnel,
-  StockItem, Machine,
+  StockItem, Package,
 } from '@/lib/api/types';
 import { errorMessage, parseFieldErrors } from '@/lib/api/errors';
 import { Input } from '@/components/ui/input';
@@ -39,7 +39,7 @@ export default function ReclamationPage() {
   const [selected, setSelected] = useState<Reclamation | null>(null);
   const [creating, setCreating] = useState(false);
   const [stockItems, setStockItems] = useState<StockItem[]>([]);
-  const [machines, setMachines] = useState<Machine[]>([]);
+  const [packages, setPackages] = useState<Package[]>([]);
 
   const refresh = () => {
     const params: Record<string, string> = {};
@@ -50,7 +50,7 @@ export default function ReclamationPage() {
 
   useEffect(() => {
     stockApi.getItems({ is_active: 'true' }).then((res) => setStockItems(res.results)).catch(console.error);
-    machinesApi.getMachines().then((res) => setMachines(res.results)).catch(console.error);
+    packageApi.getPackages().then((res) => setPackages(res.results)).catch(console.error);
   }, []);
 
   useEffect(() => {
@@ -121,7 +121,7 @@ export default function ReclamationPage() {
         </div>
 
         {creating ? (
-          <ReclamationForm stockItems={stockItems} machines={machines} onSaved={afterSave} onCancel={() => setCreating(false)} />
+          <ReclamationForm stockItems={stockItems} packages={packages} onSaved={afterSave} onCancel={() => setCreating(false)} />
         ) : selected ? (
           <ReclamationDetail reclamation={selected} onUpdated={(r) => { setSelected(r); refresh(); }} />
         ) : (
@@ -151,15 +151,14 @@ function PersonnelPreview({ data, loading }: { data: ResolvedPersonnel | null; l
   );
 }
 
-function ReclamationForm({ stockItems, machines, onSaved, onCancel }: {
-  stockItems: StockItem[]; machines: Machine[]; onSaved: (r: Reclamation) => void; onCancel: () => void;
+function ReclamationForm({ stockItems, packages, onSaved, onCancel }: {
+  stockItems: StockItem[]; packages: Package[]; onSaved: (r: Reclamation) => void; onCancel: () => void;
 }) {
   const [client, setClient] = useState('');
   const [description, setDescription] = useState('');
   const [stockItemId, setStockItemId] = useState('');
   const [productReference, setProductReference] = useState('');
-  const [machineId, setMachineId] = useState('');
-  const [productionAt, setProductionAt] = useState('');
+  const [packageId, setPackageId] = useState('');
   const [severity, setSeverity] = useState<ReclamationSeverity>('MAJOR');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -167,17 +166,13 @@ function ReclamationForm({ stockItems, machines, onSaved, onCancel }: {
   const [previewLoading, setPreviewLoading] = useState(false);
 
   useEffect(() => {
-    if (!machineId || !productionAt) { setPreview(null); return; }
-    const t = setTimeout(() => {
-      setPreviewLoading(true);
-      const iso = new Date(productionAt).toISOString();
-      reclamationApi.resolvePersonnelPreview(iso, Number(machineId))
-        .then(setPreview)
-        .catch(() => setPreview(null))
-        .finally(() => setPreviewLoading(false));
-    }, 400);
-    return () => clearTimeout(t);
-  }, [machineId, productionAt]);
+    if (!packageId) { setPreview(null); return; }
+    setPreviewLoading(true);
+    reclamationApi.resolvePersonnelPreviewByPackage(Number(packageId))
+      .then(setPreview)
+      .catch(() => setPreview(null))
+      .finally(() => setPreviewLoading(false));
+  }, [packageId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -188,8 +183,7 @@ function ReclamationForm({ stockItems, machines, onSaved, onCancel }: {
         client, description,
         stock_item: stockItemId ? Number(stockItemId) : null,
         product_reference: productReference,
-        machine: machineId ? Number(machineId) : null,
-        production_at: productionAt ? new Date(productionAt).toISOString() : null,
+        package: packageId ? Number(packageId) : null,
         severity,
       });
       toast.success('Réclamation créée.');
@@ -244,21 +238,18 @@ function ReclamationForm({ stockItems, machines, onSaved, onCancel }: {
       </div>
 
       <div className="border-t border-border/50 pt-4">
-        <h3 className="text-xs font-semibold text-text-dim uppercase mb-3">Contexte de production (si connu) — pour identifier le personnel en poste</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-semibold text-text-dim uppercase mb-1">Machine / ligne</label>
-            <select value={machineId} onChange={(e) => setMachineId(e.target.value)}
-              className="w-full bg-bg border border-border rounded p-2 text-sm text-text focus:outline-none focus:border-cyan-500">
-              <option value="">Inconnue</option>
-              {machines.map((m) => <option key={m.id} value={m.id}>{m.name} ({m.code})</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-text-dim uppercase mb-1">Date / heure de production</label>
-            <input type="datetime-local" value={productionAt} onChange={(e) => setProductionAt(e.target.value)}
-              className="w-full bg-bg border border-border rounded p-2 text-sm text-text focus:outline-none focus:border-cyan-500" />
-          </div>
+        <h3 className="text-xs font-semibold text-text-dim uppercase mb-3">Sac (package) concerné — identifie automatiquement la machine, la production et le personnel en poste</h3>
+        <div>
+          <label className="block text-xs font-semibold text-text-dim uppercase mb-1">Sac (référence)</label>
+          <select value={packageId} onChange={(e) => setPackageId(e.target.value)}
+            className="w-full bg-bg border border-border rounded p-2 text-sm text-text focus:outline-none focus:border-cyan-500">
+            <option value="">Aucun</option>
+            {packages.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.reference} — {p.bottle_category || 'sans recette'} ({p.machine_code}, {new Date(p.production_started_at).toLocaleDateString()})
+              </option>
+            ))}
+          </select>
         </div>
         <PersonnelPreview data={preview} loading={previewLoading} />
       </div>
@@ -323,6 +314,10 @@ function ReclamationDetail({ reclamation, onUpdated }: { reclamation: Reclamatio
         <div className="flex justify-between border-b border-border/30 py-1">
           <span className="text-text-dim">Produit/bouteille</span>
           <span className="font-mono text-text">{reclamation.product_reference || '—'}</span>
+        </div>
+        <div className="flex justify-between border-b border-border/30 py-1">
+          <span className="text-text-dim">Sac (package)</span>
+          <span className="font-mono text-text">{reclamation.package_reference || '—'}</span>
         </div>
         <div className="flex justify-between border-b border-border/30 py-1">
           <span className="text-text-dim">Machine</span>
