@@ -188,6 +188,7 @@ function OrdersTab({ canEdit }: { canEdit: boolean }) {
         {schedule.length === 0 ? (
           <p className="text-sm text-text-dim">Aucune commande en file d'attente.</p>
         ) : (
+          <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-border text-[10px] uppercase tracking-wider text-text-dim">
@@ -269,6 +270,7 @@ function OrdersTab({ canEdit }: { canEdit: boolean }) {
               })}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </div>

@@ -79,6 +79,7 @@ export default function OeePage() {
       {/* History Table */}
       <div className="bg-panel border border-border rounded-md flex-1 p-4 overflow-auto">
         <h2 className="text-sm font-semibold text-text-dim tracking-wider uppercase mb-4">Historique TRS par Shift</h2>
+        <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-border text-[10px] uppercase tracking-wider text-text-dim">
@@ -110,6 +111,7 @@ export default function OeePage() {
             })}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

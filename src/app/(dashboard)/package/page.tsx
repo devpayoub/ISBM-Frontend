@@ -527,6 +527,7 @@ function PackageDetail({ pkg, onShipped, onVerified }: { pkg: Package; onShipped
         {pkg.personnel_snapshot.length === 0 ? (
           <p className="text-sm text-text-dim">Aucun personnel identifié pour cette période.</p>
         ) : (
+          <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-border text-[10px] uppercase tracking-wider text-text-dim">
@@ -543,6 +544,7 @@ function PackageDetail({ pkg, onShipped, onVerified }: { pkg: Package; onShipped
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 

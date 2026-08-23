@@ -76,6 +76,7 @@ export default function RhPage() {
 
           <div className="bg-panel border border-border rounded-md flex-1 p-4 overflow-auto">
             <div className="text-sm text-text-dim mb-4">Total: {assignments.length}</div>
+            <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-border text-[10px] uppercase tracking-wider text-text-dim">
@@ -102,6 +103,7 @@ export default function RhPage() {
                 ))}
               </tbody>
             </table>
+            </div>
             {assignments.length === 0 && (
               <div className="text-center py-12 text-text-dim text-sm">Aucune connexion enregistrée.</div>
             )}
@@ -165,6 +167,7 @@ function WorkingAtLookup({ machines }: { machines: Machine[] }) {
 
       {searched && (
         results && results.length > 0 ? (
+          <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-border text-[10px] uppercase tracking-wider text-text-dim">
@@ -191,6 +194,7 @@ function WorkingAtLookup({ machines }: { machines: Machine[] }) {
               ))}
             </tbody>
           </table>
+          </div>
         ) : (
           <p className="text-sm text-text-dim">Personne trouvé pour cette date/heure.</p>
         )

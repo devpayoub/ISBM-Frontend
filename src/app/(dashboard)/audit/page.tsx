@@ -86,6 +86,7 @@ export default function AuditPage() {
 
       <div className="bg-panel border border-border rounded-md flex-1 p-4 overflow-auto">
         <div className="text-sm text-text-dim mb-4">Total: {data?.count ?? logs.length}</div>
+        <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-border text-[10px] uppercase tracking-wider text-text-dim">
@@ -114,6 +115,7 @@ export default function AuditPage() {
             ))}
           </tbody>
         </table>
+        </div>
         {logs.length === 0 && (
           <div className="text-center py-12 text-text-dim text-sm">Aucune activité enregistrée.</div>
         )}

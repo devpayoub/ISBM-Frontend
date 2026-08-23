@@ -257,6 +257,7 @@ export default function StockPage() {
         {filtered.length === 0 ? (
           <p className="text-sm text-text-dim">Aucun article.</p>
         ) : (
+          <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-border text-[10px] uppercase tracking-wider text-text-dim">
@@ -297,6 +298,7 @@ export default function StockPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 

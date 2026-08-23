@@ -454,6 +454,7 @@ export default function SettingsPage() {
           {bottles.length === 0 ? (
             <p className="text-sm text-text-dim">Aucune catégorie de bouteille définie.</p>
           ) : (
+            <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-border text-[10px] uppercase tracking-wider text-text-dim">
@@ -492,6 +493,7 @@ export default function SettingsPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </div>
       )}

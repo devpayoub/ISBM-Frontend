@@ -271,6 +271,7 @@ export default function UsersPage() {
             className="w-full sm:w-72 bg-bg border border-border rounded p-2 text-sm text-text focus:outline-none focus:border-cyan-500"
           />
         </div>
+        <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-border text-[10px] uppercase tracking-wider text-text-dim">
@@ -328,6 +329,7 @@ export default function UsersPage() {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

@@ -400,6 +400,7 @@ function AuxiliaryEquipmentSection({ machine, canManage }: { machine: Machine; c
       {filtered.length === 0 ? (
         <p className="text-sm text-text-dim">Aucun équipement auxiliaire assigné à cette machine.</p>
       ) : (
+        <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-border text-[10px] uppercase tracking-wider text-text-dim">
@@ -427,6 +428,7 @@ function AuxiliaryEquipmentSection({ machine, canManage }: { machine: Machine; c
             ))}
           </tbody>
         </table>
+        </div>
       )}
     </div>
   );
@@ -458,6 +460,7 @@ function MaintenanceSummarySection({ machineId }: { machineId: number }) {
       {tasks.length === 0 ? (
         <p className="text-sm text-text-dim">Aucune tâche de maintenance préventive pour cette machine.</p>
       ) : (
+        <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-border text-[10px] uppercase tracking-wider text-text-dim">
@@ -484,6 +487,7 @@ function MaintenanceSummarySection({ machineId }: { machineId: number }) {
             ))}
           </tbody>
         </table>
+        </div>
       )}
     </div>
   );
