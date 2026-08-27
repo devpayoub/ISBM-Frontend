@@ -1,6 +1,6 @@
 import { fetchClient } from './client';
 import {
-  AuxiliaryEquipment, Machine, MachineComponent, MachineStatus, Mold,
+  AuxiliaryEquipment, Machine, MachineComponent, MachineParameter, MachineStatus, Mold,
   PaginatedResponse, Parameter,
 } from './types';
 
@@ -60,6 +60,23 @@ export const machinesApi = {
     body: JSON.stringify(data),
   }),
   deleteComponent: (id: number) => fetchClient<void>(`/api/v1/machines/components/${id}`, { method: 'DELETE' }),
+
+  // ── Machine parameters (Fiche Technique readings) ──
+  getMachineParameters: (params: { machine?: number; component?: number }) => {
+    const qs = new URLSearchParams();
+    if (params.machine) qs.set('machine', String(params.machine));
+    if (params.component) qs.set('component', String(params.component));
+    return fetchClient<PaginatedResponse<MachineParameter>>(`/api/v1/machines/parameter-readings?${qs.toString()}`);
+  },
+  createMachineParameter: (data: Partial<MachineParameter>) => fetchClient<MachineParameter>('/api/v1/machines/parameter-readings', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  updateMachineParameter: (id: number, data: Partial<MachineParameter>) => fetchClient<MachineParameter>(`/api/v1/machines/parameter-readings/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  }),
+  deleteMachineParameter: (id: number) => fetchClient<void>(`/api/v1/machines/parameter-readings/${id}`, { method: 'DELETE' }),
 
   getAuxiliaryEquipment: () => fetchClient<PaginatedResponse<AuxiliaryEquipment>>('/api/v1/machines/auxiliary-equipment'),
   createAuxiliaryEquipment: (data: Partial<AuxiliaryEquipment>) => fetchClient<AuxiliaryEquipment>('/api/v1/machines/auxiliary-equipment', {

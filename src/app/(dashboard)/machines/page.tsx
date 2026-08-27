@@ -220,8 +220,10 @@ export default function MachinesPage() {
           const pace = isProduction ? getPace(machine) : null;
           const paceBarColor = pace && pace.pct >= 90 ? 'bg-green-500' : pace && pace.pct >= 60 ? 'bg-orange-500' : 'bg-red-500';
 
+          const equipmentBorder = machine.equipment_status === 'WARNING' ? 'border-l-4 border-l-orange-500' : 'border-l-4 border-l-green-500';
+
           return (
-          <div key={machine.id} className={`bg-panel border rounded-md overflow-hidden transition-colors group ${topAlert ? 'border-red-500/50' : 'border-border hover:border-cyan-500/50'}`}>
+          <div key={machine.id} className={`bg-panel border rounded-md overflow-hidden transition-colors group ${equipmentBorder} ${topAlert ? 'border-red-500/50' : 'border-border hover:border-cyan-500/50'}`}>
             {topAlert && (
               canOpenAlert ? (
                 <Link href={`/alerts/${topAlert.id}`} className="flex items-center justify-between gap-2 bg-red-500/10 border-b border-red-500/30 px-4 py-2 text-xs hover:bg-red-500/15 transition-colors">
@@ -258,6 +260,12 @@ export default function MachinesPage() {
                       {machine.status}
                     </span>
                   )}
+                </div>
+                <div className="flex items-center justify-between mt-2 text-xs text-text-dim">
+                  <span>Équipements: <span className="font-mono text-text">{machine.component_count}</span></span>
+                  <span className={`font-mono px-1.5 py-0.5 rounded text-[10px] ${machine.equipment_status === 'WARNING' ? 'bg-orange-500/10 text-orange-500' : 'bg-green-500/10 text-green-500'}`}>
+                    {machine.equipment_status === 'WARNING' ? 'Avertissement' : 'OK'}
+                  </span>
                 </div>
               </div>
 

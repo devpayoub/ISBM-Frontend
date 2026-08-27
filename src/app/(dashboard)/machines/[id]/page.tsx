@@ -1,13 +1,15 @@
 'use client';
 
 import { use, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { machinesApi } from '@/lib/api/machines';
 import { alertsApi } from '@/lib/api/alerts';
 import { maintenanceApi } from '@/lib/api/maintenance';
 import {
-  Machine, Alert, AuxiliaryEquipment, PreventiveMaintenance, PmStatus,
+  Machine, Alert, MachineComponent, MachineParameter, MaintenanceControl,
+  PreventiveMaintenance, PmStatus,
 } from '@/lib/api/types';
 import { useAlertStore } from '@/lib/store/useAlertStore';
 import { useAuthStore } from '@/lib/store/useAuthStore';
@@ -16,7 +18,7 @@ import { BackButton } from '@/components/ui/back-button';
 import { Input } from '@/components/ui/input';
 import { EquipmentCrudSection } from '@/components/machines/EquipmentCrudSection';
 
-type Tab = 'overview' | 'components' | 'auxiliary' | 'molds' | 'maintenance';
+type Tab = 'overview' | 'components' | 'molds' | 'maintenance' | 'controls';
 
 const PM_STATUS_BADGE: Record<PmStatus, string> = {
   DUE: 'bg-cyan-500/10 text-cyan-400',
@@ -84,10 +86,10 @@ export default function MachineDetailPage({ params }: { params: Promise<{ id: st
 
   const TABS: { key: Tab; label: string }[] = [
     { key: 'overview', label: "Vue d'ensemble" },
-    { key: 'components', label: 'Composants' },
-    { key: 'auxiliary', label: 'Équipements auxiliaires' },
+    { key: 'components', label: 'Équipements' },
     { key: 'molds', label: 'Moules' },
     { key: 'maintenance', label: 'Maintenance préventive' },
+    { key: 'controls', label: 'Contrôle préventif' },
   ];
 
   return (
@@ -223,20 +225,7 @@ export default function MachineDetailPage({ params }: { params: Promise<{ id: st
         </div>
       )}
 
-      {tab === 'components' && (
-        <EquipmentCrudSection
-          title="Composants machine"
-          itemLabel="Composant"
-          machineId={machine.id}
-          canManage={canManage}
-          list={(id) => machinesApi.getComponents(id)}
-          create={(data) => machinesApi.createComponent(data)}
-          update={(id, data) => machinesApi.updateComponent(id, data)}
-          remove={(id) => machinesApi.deleteComponent(id)}
-        />
-      )}
-
-      {tab === 'auxiliary' && <AuxiliaryEquipmentSection machine={machine} canManage={canManage} />}
+      {tab === 'components' && <EquipmentGridSection machine={machine} canManage={canManage} />}
 
       {tab === 'molds' && (
         <EquipmentCrudSection
@@ -253,60 +242,46 @@ export default function MachineDetailPage({ params }: { params: Promise<{ id: st
       )}
 
       {tab === 'maintenance' && <MaintenanceSummarySection machineId={machine.id} />}
+
+      {tab === 'controls' && <ControlsSection machineId={machine.id} />}
     </div>
   );
 }
 
-/** Auxiliary equipment (Air compressor, Air dryer, ...) is M2M across
- * machines — unlike Components/Molds it isn't owned by a single machine,
- * so this page just scopes the list to equipment already assigned here
- * and lets the admin (re)assign it across any of the site's machines. */
-function AuxiliaryEquipmentSection({ machine, canManage }: { machine: Machine; canManage: boolean }) {
-  const [items, setItems] = useState<AuxiliaryEquipment[]>([]);
-  const [allMachines, setAllMachines] = useState<Machine[]>([]);
-  const [search, setSearch] = useState('');
+const STATUS_BADGE: Record<'OK' | 'WARNING', string> = {
+  OK: 'bg-green-500/10 text-green-500',
+  WARNING: 'bg-orange-500/10 text-orange-500',
+};
+const STATUS_LABEL: Record<'OK' | 'WARNING', string> = { OK: 'Normal', WARNING: 'Avertissement' };
+
+/** Card-grid drill-down replacing the old plain "Composants" table: one card
+ * for the machine's own directly-attached parameters (Zone Vis, pressures...)
+ * plus one card per MachineComponent (Dryer, Chiller, Hot Runner...), each
+ * showing a live component/parameter-derived status and linking to its own
+ * Fiche Technique page. Admin add/edit/delete of components stays inline. */
+function EquipmentGridSection({ machine, canManage }: { machine: Machine; canManage: boolean }) {
+  const [components, setComponents] = useState<MachineComponent[]>([]);
+  const [ownParams, setOwnParams] = useState<MachineParameter[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [name, setName] = useState('');
   const [reference, setReference] = useState('');
-  const [selectedMachines, setSelectedMachines] = useState<number[]>([]);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const refresh = () => machinesApi.getAuxiliaryEquipment().then((res) => setItems(res.results)).catch(console.error);
-
-  useEffect(() => {
-    refresh();
-    machinesApi.getMachines().then((res) => setAllMachines(res.results)).catch(console.error);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const scoped = items.filter((eq) => eq.machines.includes(machine.id));
-
-  const resetForm = () => {
-    setEditingId(null);
-    setName('');
-    setReference('');
-    setSelectedMachines([machine.id]);
-    setFieldErrors({});
+  const refresh = () => {
+    machinesApi.getComponents(machine.id).then((res) => setComponents(res.results)).catch(console.error);
+    machinesApi.getMachineParameters({ machine: machine.id }).then((res) => setOwnParams(res.results)).catch(console.error);
   };
 
-  const startCreate = () => {
-    resetForm();
-    setShowForm(true);
-  };
+  useEffect(refresh, [machine.id]);
 
-  const startEdit = (eq: AuxiliaryEquipment) => {
-    setEditingId(eq.id);
-    setName(eq.name);
-    setReference(eq.reference || '');
-    setSelectedMachines(eq.machines);
-    setFieldErrors({});
-    setShowForm(true);
-  };
+  const ownStatus: 'OK' | 'WARNING' = ownParams.some((p) => p.status === 'WARNING') ? 'WARNING' : 'OK';
 
-  const toggleMachine = (id: number) => {
-    setSelectedMachines((prev) => prev.includes(id) ? prev.filter((m) => m !== id) : [...prev, id]);
+  const resetForm = () => { setEditingId(null); setName(''); setReference(''); setFieldErrors({}); };
+  const startCreate = () => { resetForm(); setShowForm(true); };
+  const startEdit = (c: MachineComponent) => {
+    setEditingId(c.id); setName(c.name); setReference(c.reference || ''); setFieldErrors({}); setShowForm(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -315,17 +290,17 @@ function AuxiliaryEquipmentSection({ machine, canManage }: { machine: Machine; c
     setFieldErrors({});
     try {
       if (editingId) {
-        await machinesApi.updateAuxiliaryEquipment(editingId, { name, reference, machines: selectedMachines });
-        toast.success('Équipement auxiliaire mis à jour.');
+        await machinesApi.updateComponent(editingId, { name, reference });
+        toast.success('Équipement mis à jour.');
       } else {
-        await machinesApi.createAuxiliaryEquipment({ name, reference, machines: selectedMachines });
-        toast.success('Équipement auxiliaire créé.');
+        await machinesApi.createComponent({ machine: machine.id, name, reference });
+        toast.success('Équipement créé.');
       }
       resetForm();
       setShowForm(false);
-      await refresh();
+      refresh();
     } catch (err) {
-      console.error('Failed to save auxiliary equipment', err);
+      console.error('Failed to save machine component', err);
       setFieldErrors(parseFieldErrors(err));
       toast.error(errorMessage(err, "Échec de l'enregistrement."));
     } finally {
@@ -333,40 +308,30 @@ function AuxiliaryEquipmentSection({ machine, canManage }: { machine: Machine; c
     }
   };
 
-  const handleDelete = async (eq: AuxiliaryEquipment) => {
-    if (!confirm(`Supprimer "${eq.name}" ?`)) return;
+  const handleDelete = async (c: MachineComponent) => {
+    if (!confirm(`Supprimer "${c.name}" ?`)) return;
     try {
-      await machinesApi.deleteAuxiliaryEquipment(eq.id);
-      await refresh();
-      toast.success('Équipement auxiliaire supprimé.');
+      await machinesApi.deleteComponent(c.id);
+      refresh();
+      toast.success('Équipement supprimé.');
     } catch (err) {
-      console.error('Failed to delete auxiliary equipment', err);
+      console.error('Failed to delete machine component', err);
       toast.error(errorMessage(err, 'Échec de la suppression.'));
     }
   };
 
-  const filtered = scoped.filter((eq) => {
-    const q = search.trim().toLowerCase();
-    if (!q) return true;
-    return eq.name.toLowerCase().includes(q) || (eq.reference || '').toLowerCase().includes(q);
-  });
-
   return (
-    <div className="bg-panel border border-border rounded-md p-6">
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
-        <h2 className="text-sm font-semibold text-text-dim tracking-wider uppercase">Équipements auxiliaires</h2>
-        <div className="flex gap-3">
-          <Input type="text" placeholder="Rechercher..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-48" />
-          {canManage && (
-            <button onClick={startCreate} className="bg-cyan-500 hover:bg-cyan-600 text-white px-4 py-2 rounded text-sm font-medium transition-colors whitespace-nowrap">
-              + Ajouter
-            </button>
-          )}
+    <div className="space-y-4">
+      {canManage && (
+        <div className="flex justify-end">
+          <button onClick={startCreate} className="bg-cyan-500 hover:bg-cyan-600 text-white px-4 py-2 rounded text-sm font-medium transition-colors">
+            + Ajouter équipement
+          </button>
         </div>
-      </div>
+      )}
 
       {showForm && canManage && (
-        <form onSubmit={handleSubmit} className="bg-panel-2 border border-border rounded-md p-4 grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+        <form onSubmit={handleSubmit} className="bg-panel-2 border border-border rounded-md p-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <label className="block text-xs font-semibold text-text-dim uppercase mb-1">Nom *</label>
             <Input type="text" value={name} onChange={(e) => setName(e.target.value)} required error={fieldErrors.name} />
@@ -374,17 +339,6 @@ function AuxiliaryEquipmentSection({ machine, canManage }: { machine: Machine; c
           <div>
             <label className="block text-xs font-semibold text-text-dim uppercase mb-1">Référence</label>
             <Input type="text" value={reference} onChange={(e) => setReference(e.target.value)} error={fieldErrors.reference} />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-text-dim uppercase mb-1">Machines desservies</label>
-            <div className="bg-bg border border-border rounded p-2 max-h-24 overflow-auto space-y-1">
-              {allMachines.map((m) => (
-                <label key={m.id} className="flex items-center gap-2 text-xs text-text-dim">
-                  <input type="checkbox" checked={selectedMachines.includes(m.id)} onChange={() => toggleMachine(m.id)} />
-                  {m.name} ({m.code})
-                </label>
-              ))}
-            </div>
           </div>
           <div className="col-span-full flex justify-end gap-3">
             <button type="button" onClick={() => { setShowForm(false); resetForm(); }} className="px-4 py-2 rounded text-sm text-text-dim hover:bg-panel transition-colors">
@@ -397,33 +351,81 @@ function AuxiliaryEquipmentSection({ machine, canManage }: { machine: Machine; c
         </form>
       )}
 
-      {filtered.length === 0 ? (
-        <p className="text-sm text-text-dim">Aucun équipement auxiliaire assigné à cette machine.</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <Link href={`/machines/${machine.id}/equipment/machine`}
+          className="block bg-panel border border-border rounded-md p-4 hover:border-cyan-500/50 transition-colors">
+          <div className="font-semibold text-text mb-1">Machine {machine.name}</div>
+          <div className="text-xs text-text-dim mb-3">{ownParams.length} Paramètres Mesurés</div>
+          <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${STATUS_BADGE[ownStatus]}`}>{STATUS_LABEL[ownStatus]}</span>
+        </Link>
+
+        {components.map((c) => (
+          <div key={c.id} className="bg-panel border border-border rounded-md p-4 hover:border-cyan-500/50 transition-colors">
+            <Link href={`/machines/${machine.id}/equipment/${c.id}`} className="block">
+              <div className="font-semibold text-text mb-1">{c.name}</div>
+              <div className="text-xs text-text-dim mb-3">{c.parameter_count} Paramètres Mesurés</div>
+              <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${STATUS_BADGE[c.status]}`}>{STATUS_LABEL[c.status]}</span>
+            </Link>
+            {canManage && (
+              <div className="flex gap-3 mt-3 pt-3 border-t border-border/50">
+                <button onClick={() => startEdit(c)} className="text-cyan-500 hover:text-cyan-400 text-xs font-medium">Modifier</button>
+                <button onClick={() => handleDelete(c)} className="text-red-500 hover:text-red-400 text-xs font-medium">Supprimer</button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {components.length === 0 && (
+        <p className="text-sm text-text-dim">Aucun équipement pour cette machine.</p>
+      )}
+    </div>
+  );
+}
+
+/** Contrôle préventif history for this machine — who ran each control and
+ * when, reusing the same MaintenanceControl data the Controller's /control
+ * page writes to (read-only here). */
+function ControlsSection({ machineId }: { machineId: number }) {
+  const [controls, setControls] = useState<MaintenanceControl[]>([]);
+
+  useEffect(() => {
+    maintenanceApi.getControls({ machine: String(machineId) }).then((res) => setControls(res.results)).catch(console.error);
+  }, [machineId]);
+
+  return (
+    <div className="bg-panel border border-border rounded-md p-6">
+      <h2 className="text-sm font-semibold text-text-dim tracking-wider uppercase mb-4">Contrôle préventif</h2>
+      {controls.length === 0 ? (
+        <p className="text-sm text-text-dim">Aucun contrôle préventif enregistré pour cette machine.</p>
       ) : (
         <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-border text-[10px] uppercase tracking-wider text-text-dim">
-              <th className="pb-2 font-semibold">Nom</th>
-              <th className="pb-2 font-semibold">Référence</th>
-              <th className="pb-2 font-semibold">Machines desservies</th>
-              {canManage && <th className="pb-2 font-semibold text-right">Actions</th>}
+              <th className="pb-2 font-semibold">Date</th>
+              <th className="pb-2 font-semibold">Shift</th>
+              <th className="pb-2 font-semibold">Modèle</th>
+              <th className="pb-2 font-semibold">Contrôleur</th>
+              <th className="pb-2 font-semibold">Confirmé par</th>
+              <th className="pb-2 font-semibold">Statut</th>
             </tr>
           </thead>
           <tbody>
-            {filtered.map((eq) => (
-              <tr key={eq.id} className="border-b border-border/30 hover:bg-panel-2/50">
-                <td className="py-3 text-sm font-medium">{eq.name}</td>
-                <td className="py-3 font-mono text-xs text-text-dim">{eq.reference || '—'}</td>
-                <td className="py-3 font-mono text-xs text-text-dim">
-                  {(eq.machines_detail || []).map((m) => m.code).join(', ') || '—'}
+            {controls.map((c) => (
+              <tr key={c.id} className="border-b border-border/30 hover:bg-panel-2/50">
+                <td className="py-3 font-mono text-xs">{c.date}</td>
+                <td className="py-3 font-mono text-xs text-text-dim">{c.shift}</td>
+                <td className="py-3 text-sm">{c.template_name}</td>
+                <td className="py-3 text-sm text-text-dim">{c.controller_name || '—'}</td>
+                <td className="py-3 text-sm text-text-dim">
+                  {c.confirmed_by_name ? `${c.confirmed_by_name} — ${new Date(c.confirmed_at!).toLocaleString()}` : '—'}
                 </td>
-                {canManage && (
-                  <td className="py-3 text-right space-x-3">
-                    <button onClick={() => startEdit(eq)} className="text-cyan-500 hover:text-cyan-400 text-xs font-medium">Modifier</button>
-                    <button onClick={() => handleDelete(eq)} className="text-red-500 hover:text-red-400 text-xs font-medium">Supprimer</button>
-                  </td>
-                )}
+                <td className="py-3">
+                  <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${c.is_locked ? 'bg-green-500/10 text-green-500' : 'bg-orange-500/10 text-orange-500'}`}>
+                    {c.is_locked ? 'Confirmé' : 'En cours'}
+                  </span>
+                </td>
               </tr>
             ))}
           </tbody>

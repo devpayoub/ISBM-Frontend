@@ -35,6 +35,8 @@ export interface Machine {
   type: MachineType;
   status: MachineStatus;
   andon_status: AndonColor;
+  equipment_status: 'OK' | 'WARNING';
+  component_count: number;
   nominal_bph: number;
   nominal_cph: number;
   cavities: number;
@@ -64,7 +66,30 @@ export interface MachineComponent {
   name: string;
   reference?: string;
   is_active: boolean;
+  status: 'OK' | 'WARNING';
+  parameter_count: number;
   created_at?: string;
+  updated_at?: string;
+}
+
+export type MachineParameterDisplay = 'GAUGE' | 'BAR';
+
+export interface MachineParameter {
+  id: number;
+  machine: number | null;
+  machine_code?: string;
+  component: number | null;
+  component_name?: string;
+  name: string;
+  unit?: string;
+  display: MachineParameterDisplay;
+  current_value: string | null;
+  target_value: string | null;
+  warning_tolerance_pct: string;
+  status: 'OK' | 'WARNING';
+  order: number;
+  updated_by?: number | null;
+  updated_by_name?: string;
   updated_at?: string;
 }
 
