@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { machinesApi } from '@/lib/api/machines';
-import { productionApi } from '@/lib/api/production';
 import { alertsApi } from '@/lib/api/alerts';
 import { Machine, MachineStatus, MachineType, PaginatedResponse } from '@/lib/api/types';
 import { useAlertStore } from '@/lib/store/useAlertStore';
@@ -14,16 +13,12 @@ import { Input } from '@/components/ui/input';
 import { connectWebSocket, disconnectWebSocket } from '@/lib/ws/client';
 
 const MACHINE_TYPES: MachineType[] = ['ISBM', 'INJECTION', 'COMPRESSOR', 'CHILLER', 'DRYER'];
-// Utility equipment (compressor/chiller/dryer) doesn't produce bottles — the
-// pace bar and today's-output stat only make sense for lines that do.
-const PRODUCTION_TYPES: MachineType[] = ['ISBM', 'INJECTION'];
 const STATUS_OPTIONS: MachineStatus[] = ['RUNNING', 'STOPPED', 'MAINTENANCE', 'BREAKDOWN'];
 
 export default function MachinesPage() {
   const [data, setData] = useState<PaginatedResponse<Machine> | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [perMachineToday, setPerMachineToday] = useState<Record<string, number>>({});
   const [statusUpdating, setStatusUpdating] = useState<number | null>(null);
   const machineStatus = useAlertStore((state) => state.machineStatus);
   const liveAlerts = useAlertStore((state) => state.liveAlerts);
@@ -43,8 +38,6 @@ export default function MachinesPage() {
 
   useEffect(() => {
     machinesApi.getMachines().then(setData).catch(console.error);
-    productionApi.getDailySummary(new Date().toISOString().split('T')[0])
-      .then((res) => setPerMachineToday(res.per_machine || {})).catch(console.error);
     // Andon dots + the alert overlay below need live data. useAlertStore is
     // only ever seeded by whichever page happens to fetch it first (today
     // that's the Dashboard) — landing here directly leaves it empty, so
@@ -68,22 +61,6 @@ export default function MachinesPage() {
     } finally {
       setStatusUpdating(null);
     }
-  };
-
-  // "Current BPH vs nominal" as an honest, always-available number: today's
-  // cumulative output vs. what nominal rate would have produced by now —
-  // there's no live instantaneous-rate feed, so pace-so-far is the closest
-  // truthful stand-in (matches Plan_Frontend's "animated bar" intent without
-  // inventing a metric the backend doesn't actually compute).
-  const getPace = (machine: Machine) => {
-    const nominal = machine.type === 'INJECTION' ? machine.nominal_cph : machine.nominal_bph;
-    const today = perMachineToday[machine.code] || 0;
-    const now = new Date();
-    const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const hoursElapsed = Math.max((now.getTime() - midnight.getTime()) / 3600000, 1 / 60);
-    const expected = Math.round(nominal * hoursElapsed);
-    const pct = expected > 0 ? Math.min((today / expected) * 100, 100) : 0;
-    return { today, expected, pct };
   };
 
   const resetForm = () => {
@@ -216,9 +193,6 @@ export default function MachinesPage() {
           const machineAlerts = liveAlerts.filter((a) => a.machine === machine.id);
           const topAlert = machineAlerts[0];
           const canOpenAlert = user?.role === 'ADMIN' || user?.role === 'MANAGER' || user?.role === 'CONTROLLER';
-          const isProduction = PRODUCTION_TYPES.includes(machine.type);
-          const pace = isProduction ? getPace(machine) : null;
-          const paceBarColor = pace && pace.pct >= 90 ? 'bg-green-500' : pace && pace.pct >= 60 ? 'bg-orange-500' : 'bg-red-500';
 
           const equipmentBorder = machine.equipment_status === 'WARNING' ? 'border-l-4 border-l-orange-500' : 'border-l-4 border-l-green-500';
 
@@ -268,18 +242,6 @@ export default function MachinesPage() {
                   </span>
                 </div>
               </div>
-
-              {pace && (
-                <div className="mb-4">
-                  <div className="flex justify-between items-baseline mb-1">
-                    <span className="text-xs text-text-dim">Production du jour</span>
-                    <span className="font-mono text-sm text-text">{pace.today} / {pace.expected} <span className="text-text-dim">attendu</span></span>
-                  </div>
-                  <div className="w-full h-2 bg-bg rounded-full overflow-hidden">
-                    <div className={`h-full rounded-full transition-all duration-1000 ${paceBarColor}`} style={{ width: `${pace.pct}%` }} />
-                  </div>
-                </div>
-              )}
 
               <Link href={`/machines/${machine.id}`} className="block space-y-2 text-sm text-text-dim">
                 <div className="flex justify-between">

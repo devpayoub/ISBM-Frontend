@@ -96,12 +96,12 @@ export default function MachineDetailPage({ params }: { params: Promise<{ id: st
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex items-center gap-3 flex-wrap min-w-0">
           <BackButton fallbackHref="/machines" />
-          <div className={`w-6 h-6 rounded-full ${andonStyle}`} />
-          <h1 className="font-heading font-bold text-2xl uppercase tracking-wide text-text">{machine.name}</h1>
-          <span className="font-mono text-sm text-text-dim bg-bg px-3 py-1 rounded">{machine.code}</span>
+          <div className={`w-6 h-6 rounded-full shrink-0 ${andonStyle}`} />
+          <h1 className="font-heading font-bold text-xl sm:text-2xl uppercase tracking-wide text-text break-words">{machine.name}</h1>
+          <span className="font-mono text-sm text-text-dim bg-bg px-3 py-1 rounded shrink-0">{machine.code}</span>
         </div>
         {canManage && tab === 'overview' && (
           <div className="flex gap-2">
@@ -124,7 +124,7 @@ export default function MachineDetailPage({ params }: { params: Promise<{ id: st
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-bg border border-border rounded-md p-1 w-fit overflow-x-auto">
+      <div className="flex gap-1 bg-bg border border-border rounded-md p-1 max-w-full overflow-x-auto">
         {TABS.map((t) => (
           <button
             key={t.key}
@@ -254,6 +254,16 @@ const STATUS_BADGE: Record<'OK' | 'WARNING', string> = {
   WARNING: 'bg-orange-500/10 text-orange-500',
 };
 const STATUS_LABEL: Record<'OK' | 'WARNING', string> = { OK: 'Normal', WARNING: 'Avertissement' };
+// Same Andon dot + colored-left-border language as the /machines list page's
+// getAndonDot, so a component's health reads the same way at a glance.
+const STATUS_DOT: Record<'OK' | 'WARNING', string> = {
+  OK: 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]',
+  WARNING: 'bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.5)]',
+};
+const STATUS_BORDER: Record<'OK' | 'WARNING', string> = {
+  OK: 'border-l-4 border-l-green-500',
+  WARNING: 'border-l-4 border-l-orange-500',
+};
 
 /** Card-grid drill-down replacing the old plain "Composants" table: one card
  * for the machine's own directly-attached parameters (Zone Vis, pressures...)
@@ -354,16 +364,22 @@ function EquipmentGridSection({ machine, canManage }: { machine: Machine; canMan
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <Link href={`/machines/${machine.id}/equipment/machine`}
-          className="block bg-panel border border-border rounded-md p-4 hover:border-cyan-500/50 transition-colors">
-          <div className="font-semibold text-text mb-1">Machine {machine.name}</div>
+          className={`block bg-panel border rounded-md p-4 border-border hover:border-cyan-500/50 transition-colors ${STATUS_BORDER[ownStatus]}`}>
+          <div className="flex items-center gap-2 mb-1">
+            <div className={`w-3 h-3 rounded-full shrink-0 ${STATUS_DOT[ownStatus]}`} />
+            <div className="font-semibold text-text">Machine {machine.name}</div>
+          </div>
           <div className="text-xs text-text-dim mb-3">{ownParams.length} Paramètres Mesurés</div>
           <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${STATUS_BADGE[ownStatus]}`}>{STATUS_LABEL[ownStatus]}</span>
         </Link>
 
         {components.map((c) => (
-          <div key={c.id} className="bg-panel border border-border rounded-md p-4 hover:border-cyan-500/50 transition-colors">
+          <div key={c.id} className={`bg-panel border rounded-md p-4 border-border hover:border-cyan-500/50 transition-colors ${STATUS_BORDER[c.status]}`}>
             <Link href={`/machines/${machine.id}/equipment/${c.id}`} className="block">
-              <div className="font-semibold text-text mb-1">{c.name}</div>
+              <div className="flex items-center gap-2 mb-1">
+                <div className={`w-3 h-3 rounded-full shrink-0 ${STATUS_DOT[c.status]}`} />
+                <div className="font-semibold text-text">{c.name}</div>
+              </div>
               <div className="text-xs text-text-dim mb-3">{c.parameter_count} Paramètres Mesurés</div>
               <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${STATUS_BADGE[c.status]}`}>{STATUS_LABEL[c.status]}</span>
             </Link>
