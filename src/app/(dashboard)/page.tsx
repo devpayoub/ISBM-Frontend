@@ -5,7 +5,7 @@ import { dashboardApi } from '@/lib/api/dashboard';
 import { alertsApi } from '@/lib/api/alerts';
 import { useAuthStore } from '@/lib/store/useAuthStore';
 import { useAlertStore } from '@/lib/store/useAlertStore';
-import { AndonBoard } from '@/components/dashboard/AndonBoard';
+import { MachinesOverview } from '@/components/dashboard/MachinesOverview';
 import { AlertFeed } from '@/components/dashboard/AlertFeed';
 import { StockSummary } from '@/components/dashboard/StockSummary';
 import { PlanningSummary } from '@/components/dashboard/PlanningSummary';
@@ -68,7 +68,7 @@ export default function DashboardPage() {
           and Stock/Planning rows below for space and could collapse to
           near-zero on a short or resized window. */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <AndonBoard />
+        <MachinesOverview />
         <AlertFeed />
       </div>
 
