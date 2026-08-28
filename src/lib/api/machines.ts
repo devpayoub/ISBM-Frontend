@@ -1,6 +1,6 @@
 import { fetchClient } from './client';
 import {
-  AuxiliaryEquipment, Machine, MachineComponent, MachineParameter, MachineStatus, Mold,
+  AuxiliaryEquipment, Machine, MachineComponent, MachineParameter, Mold,
   PaginatedResponse, Parameter,
 } from './types';
 
@@ -23,11 +23,6 @@ export const machinesApi = {
 
   deleteMachine: (id: number) => fetchClient<void>(`/api/v1/machines/${id}`, {
     method: 'DELETE',
-  }),
-
-  updateStatus: (id: number, status: MachineStatus) => fetchClient<Machine>(`/api/v1/machines/${id}/status`, {
-    method: 'PATCH',
-    body: JSON.stringify({ status }),
   }),
 
   getParameters: (id: number) => fetchClient<PaginatedResponse<Parameter>>(`/api/v1/machines/${id}/parameters`),

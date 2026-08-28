@@ -1,15 +1,9 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
-import { toast } from 'sonner';
-import { machinesApi } from '@/lib/api/machines';
-import { Machine, MachineStatus } from '@/lib/api/types';
+import { Machine } from '@/lib/api/types';
 import { useAlertStore } from '@/lib/store/useAlertStore';
 import { useAuthStore } from '@/lib/store/useAuthStore';
-import { errorMessage } from '@/lib/api/errors';
-
-const STATUS_OPTIONS: MachineStatus[] = ['RUNNING', 'STOPPED', 'MAINTENANCE', 'BREAKDOWN'];
 
 const getAndonDot = (color: string) => {
   switch (color) {
@@ -30,15 +24,18 @@ const getStatusBadge = (status: string) => {
   }
 };
 
-/** The single machine-card design used everywhere a machine list is shown
- * (Parc Machines page, Dashboard overview) — one definition, no duplicated
- * Andon-dot/status/equipment logic between the two. */
-export function MachineCard({ machine, onChanged }: { machine: Machine; onChanged?: () => void }) {
-  const [statusUpdating, setStatusUpdating] = useState(false);
+const equipmentBadge = (status: 'OK' | 'WARNING') =>
+  status === 'WARNING' ? 'bg-orange-500/10 text-orange-500' : 'bg-green-500/10 text-green-500';
+
+/** The machine-card design shared by the Parc Machines page and the
+ * Dashboard's Machines widget. `status` is always read-only here — it's
+ * set exclusively by apps.alerts.services.sync_machine_andon_status when a
+ * Controller declares/resolves an alert, never by hand from the UI.
+ * `variant="compact"` (Dashboard) shows only name/code/équipements. */
+export function MachineCard({ machine, variant = 'full' }: { machine: Machine; variant?: 'full' | 'compact' }) {
   const machineStatus = useAlertStore((state) => state.machineStatus);
   const liveAlerts = useAlertStore((state) => state.liveAlerts);
   const user = useAuthStore((state) => state.user);
-  const canManage = user?.role === 'ADMIN' || user?.role === 'MANAGER';
   const canOpenAlert = user?.role === 'ADMIN' || user?.role === 'MANAGER' || user?.role === 'CONTROLLER';
 
   const machineAlerts = liveAlerts.filter((a) => a.machine === machine.id);
@@ -46,18 +43,23 @@ export function MachineCard({ machine, onChanged }: { machine: Machine; onChange
   const andonColor = machineStatus[machine.id] || machine.andon_status || 'GREEN';
   const equipmentBorder = machine.equipment_status === 'WARNING' ? 'border-l-4 border-l-orange-500' : 'border-l-4 border-l-green-500';
 
-  const handleStatusChange = async (status: MachineStatus) => {
-    setStatusUpdating(true);
-    try {
-      await machinesApi.updateStatus(machine.id, status);
-      toast.success(`${machine.name} → ${status}`);
-      onChanged?.();
-    } catch (err) {
-      toast.error(errorMessage(err, 'Échec du changement de statut.'));
-    } finally {
-      setStatusUpdating(false);
-    }
-  };
+  if (variant === 'compact') {
+    return (
+      <Link href={`/machines/${machine.id}`}
+        className={`block bg-panel border rounded-md p-4 transition-colors ${equipmentBorder} border-border hover:border-cyan-500/50`}>
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <h2 className="font-heading font-bold text-base truncate">{machine.name}</h2>
+            <span className="font-mono text-xs text-text-dim">{machine.code}</span>
+          </div>
+          <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded shrink-0 ${equipmentBadge(machine.equipment_status)}`}>
+            {machine.equipment_status === 'WARNING' ? 'Avertissement' : 'OK'}
+          </span>
+        </div>
+        <div className="text-xs text-text-dim mt-2">Équipements: <span className="font-mono text-text">{machine.component_count}</span></div>
+      </Link>
+    );
+  }
 
   return (
     <div className={`bg-panel border rounded-md overflow-hidden transition-colors group ${equipmentBorder} ${topAlert ? 'border-red-500/50' : 'border-border hover:border-cyan-500/50'}`}>
@@ -82,25 +84,13 @@ export function MachineCard({ machine, onChanged }: { machine: Machine; onChange
           </Link>
           <div className="flex items-center gap-2 mt-2">
             <div className={`w-3 h-3 rounded-full shrink-0 ${getAndonDot(andonColor)}`} />
-            {canManage ? (
-              <select
-                value={machine.status}
-                disabled={statusUpdating}
-                onChange={(e) => handleStatusChange(e.target.value as MachineStatus)}
-                onClick={(e) => e.stopPropagation()}
-                className={`text-[10px] font-mono px-1.5 py-0.5 rounded border-0 focus:outline-none focus:ring-1 focus:ring-cyan-500 disabled:opacity-50 ${getStatusBadge(machine.status)}`}
-              >
-                {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
-              </select>
-            ) : (
-              <span className={`text-[10px] font-mono px-2 py-0.5 rounded ${getStatusBadge(machine.status)}`}>
-                {machine.status}
-              </span>
-            )}
+            <span className={`text-[10px] font-mono px-2 py-0.5 rounded ${getStatusBadge(machine.status)}`} title="Automatique — déterminé par les alertes actives sur cette machine.">
+              {machine.status}
+            </span>
           </div>
           <div className="flex items-center justify-between mt-2 text-xs text-text-dim">
             <span>Équipements: <span className="font-mono text-text">{machine.component_count}</span></span>
-            <span className={`font-mono px-1.5 py-0.5 rounded text-[10px] ${machine.equipment_status === 'WARNING' ? 'bg-orange-500/10 text-orange-500' : 'bg-green-500/10 text-green-500'}`}>
+            <span className={`font-mono px-1.5 py-0.5 rounded text-[10px] ${equipmentBadge(machine.equipment_status)}`}>
               {machine.equipment_status === 'WARNING' ? 'Avertissement' : 'OK'}
             </span>
           </div>

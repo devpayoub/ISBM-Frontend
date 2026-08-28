@@ -152,7 +152,7 @@ export default function MachinesPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {machinesList.map(machine => (
-          <MachineCard key={machine.id} machine={machine} onChanged={refresh} />
+          <MachineCard key={machine.id} machine={machine} />
         ))}
       </div>
     </div>

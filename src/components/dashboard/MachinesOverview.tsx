@@ -5,17 +5,15 @@ import { machinesApi } from '@/lib/api/machines';
 import { Machine } from '@/lib/api/types';
 import { MachineCard } from '@/components/machines/MachineCard';
 
-/** Same card design as the Parc Machines page (/machines) — replaces the
- * old plain Andon Board (name + BPH/CPH + a single dot) with the richer
- * per-machine card (status dropdown, equipment health, specs). */
+/** Compact machine list for the Dashboard — name, code, and equipment
+ * health only (see MachineCard's "compact" variant). Full specs/status
+ * live on the Parc Machines page (/machines). */
 export function MachinesOverview() {
   const [machines, setMachines] = useState<Machine[]>([]);
 
-  const refresh = () => {
+  useEffect(() => {
     machinesApi.getMachines().then((res) => setMachines(res.results)).catch(console.error);
-  };
-
-  useEffect(refresh, []);
+  }, []);
 
   return (
     <div className="bg-panel border border-border rounded-md p-4 flex flex-col h-[420px]">
@@ -26,7 +24,7 @@ export function MachinesOverview() {
         ) : (
           <div className="grid grid-cols-1 gap-4">
             {machines.map((machine) => (
-              <MachineCard key={machine.id} machine={machine} onChanged={refresh} />
+              <MachineCard key={machine.id} machine={machine} variant="compact" />
             ))}
           </div>
         )}
