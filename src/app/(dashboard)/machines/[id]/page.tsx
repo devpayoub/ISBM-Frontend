@@ -17,6 +17,7 @@ import { errorMessage, parseFieldErrors } from '@/lib/api/errors';
 import { BackButton } from '@/components/ui/back-button';
 import { Input } from '@/components/ui/input';
 import { EquipmentCrudSection } from '@/components/machines/EquipmentCrudSection';
+import { ChecklistPanel, SHIFT_LABELS } from '@/components/maintenance/ChecklistPanel';
 
 type Tab = 'overview' | 'components' | 'molds' | 'maintenance' | 'controls';
 
@@ -386,50 +387,60 @@ function EquipmentGridSection({ machine, canManage }: { machine: Machine; canMan
 /** Contrôle préventif history for this machine — who ran each control and
  * when, reusing the same MaintenanceControl data the Controller's /control
  * page writes to (read-only here). */
+/** Same list + detail design as the standalone /control page's history/
+ * supervisor views (reuses the shared ChecklistPanel) — just pre-scoped to
+ * this machine, and always read-only since Admin/Manager only browse here. */
 function ControlsSection({ machineId }: { machineId: number }) {
+  const [date, setDate] = useState('');
   const [controls, setControls] = useState<MaintenanceControl[]>([]);
+  const [selected, setSelected] = useState<MaintenanceControl | null>(null);
 
-  useEffect(() => {
-    maintenanceApi.getControls({ machine: String(machineId) }).then((res) => setControls(res.results)).catch(console.error);
-  }, [machineId]);
+  const refresh = () => {
+    const params: Record<string, string> = { machine: String(machineId) };
+    if (date) params.date = date;
+    maintenanceApi.getControls(params).then((res) => setControls(res.results)).catch(console.error);
+  };
+
+  useEffect(refresh, [machineId, date]);
 
   return (
-    <div className="bg-panel border border-border rounded-md p-6">
-      <h2 className="text-sm font-semibold text-text-dim tracking-wider uppercase mb-4">Contrôle préventif</h2>
-      {controls.length === 0 ? (
-        <p className="text-sm text-text-dim">Aucun contrôle préventif enregistré pour cette machine.</p>
+    <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6 items-start">
+      <div className="space-y-4">
+        <div className="bg-panel border border-border rounded-md p-4">
+          <label className="block text-xs font-semibold text-text-dim uppercase mb-1">Date</label>
+          <input type="date" value={date} onChange={(e) => setDate(e.target.value)}
+            className="w-full bg-bg border border-border rounded p-2 text-sm text-text focus:outline-none focus:border-cyan-500" />
+        </div>
+
+        <div className="bg-panel border border-border rounded-md p-4">
+          {controls.length === 0 ? (
+            <p className="text-sm text-text-dim">Aucun contrôle préventif enregistré pour cette machine.</p>
+          ) : (
+            <div className="space-y-1 max-h-[560px] overflow-auto">
+              {controls.map((c) => (
+                <button key={c.id} onClick={() => setSelected(c)}
+                  className={`w-full text-left p-3 rounded border transition-colors ${
+                    selected?.id === c.id ? 'bg-panel-2 border-cyan-500' : 'border-border/50 hover:bg-panel-2/50'
+                  }`}>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-medium text-text">{c.template_name}</span>
+                    <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded shrink-0 ${c.is_locked ? 'bg-green-500/10 text-green-500' : 'bg-orange-500/10 text-orange-500'}`}>
+                      {c.is_locked ? 'Confirmé' : 'En cours'}
+                    </span>
+                  </div>
+                  <div className="text-xs text-text-dim mt-0.5">{c.date} • {SHIFT_LABELS[c.shift]} • {c.controller_name || '—'}</div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {selected ? (
+        <ChecklistPanel control={selected} onUpdated={(c) => { setSelected(c); refresh(); }} readOnly />
       ) : (
-        <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="border-b border-border text-[10px] uppercase tracking-wider text-text-dim">
-              <th className="pb-2 font-semibold">Date</th>
-              <th className="pb-2 font-semibold">Shift</th>
-              <th className="pb-2 font-semibold">Modèle</th>
-              <th className="pb-2 font-semibold">Contrôleur</th>
-              <th className="pb-2 font-semibold">Confirmé par</th>
-              <th className="pb-2 font-semibold">Statut</th>
-            </tr>
-          </thead>
-          <tbody>
-            {controls.map((c) => (
-              <tr key={c.id} className="border-b border-border/30 hover:bg-panel-2/50">
-                <td className="py-3 font-mono text-xs">{c.date}</td>
-                <td className="py-3 font-mono text-xs text-text-dim">{c.shift}</td>
-                <td className="py-3 text-sm">{c.template_name}</td>
-                <td className="py-3 text-sm text-text-dim">{c.controller_name || '—'}</td>
-                <td className="py-3 text-sm text-text-dim">
-                  {c.confirmed_by_name ? `${c.confirmed_by_name} — ${new Date(c.confirmed_at!).toLocaleString()}` : '—'}
-                </td>
-                <td className="py-3">
-                  <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${c.is_locked ? 'bg-green-500/10 text-green-500' : 'bg-orange-500/10 text-orange-500'}`}>
-                    {c.is_locked ? 'Confirmé' : 'En cours'}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="bg-panel border border-border rounded-md p-6 flex items-center justify-center min-h-[200px]">
+          <p className="text-sm text-text-dim text-center max-w-sm">Sélectionnez un contrôle dans la liste pour afficher le détail.</p>
         </div>
       )}
     </div>
