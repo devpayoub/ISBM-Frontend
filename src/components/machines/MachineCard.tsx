@@ -14,15 +14,12 @@ const getAndonDot = (color: string) => {
   }
 };
 
-const getStatusBadge = (status: string) => {
-  switch (status) {
-    case 'RUNNING': return 'bg-green-500/10 text-green-500';
-    case 'STOPPED': return 'bg-gray-500/10 text-gray-400';
-    case 'MAINTENANCE': return 'bg-orange-500/10 text-orange-500';
-    case 'BREAKDOWN': return 'bg-red-500/10 text-red-500';
-    default: return 'bg-gray-500/10 text-gray-400';
-  }
+const ANDON_BADGE: Record<string, string> = {
+  RED: 'bg-red-500/10 text-red-500',
+  ORANGE: 'bg-orange-500/10 text-orange-500',
+  GREEN: 'bg-green-500/10 text-green-500',
 };
+const ANDON_LABEL: Record<string, string> = { RED: 'ERREUR', ORANGE: 'AVERTISSEMENT', GREEN: 'OK' };
 
 const equipmentBadge = (status: 'OK' | 'WARNING') =>
   status === 'WARNING' ? 'bg-orange-500/10 text-orange-500' : 'bg-green-500/10 text-green-500';
@@ -84,8 +81,8 @@ export function MachineCard({ machine, variant = 'full' }: { machine: Machine; v
           </Link>
           <div className="flex items-center gap-2 mt-2">
             <div className={`w-3 h-3 rounded-full shrink-0 ${getAndonDot(andonColor)}`} />
-            <span className={`text-[10px] font-mono px-2 py-0.5 rounded ${getStatusBadge(machine.status)}`} title="Automatique — déterminé par les alertes actives sur cette machine.">
-              {machine.status}
+            <span className={`text-[10px] font-mono px-2 py-0.5 rounded ${ANDON_BADGE[andonColor] ?? ANDON_BADGE.GREEN}`} title="Automatique — déterminé par les alertes actives sur cette machine.">
+              {ANDON_LABEL[andonColor] ?? 'OK'}
             </span>
           </div>
           <div className="flex items-center justify-between mt-2 text-xs text-text-dim">
